@@ -62,14 +62,16 @@ const getReviewsByArticle = async (req, res) => {
 
 /**
  * Create review with normalized reviewer handling
+ * UPDATED: Handles UNIQUE constraint instead of trigger for duplicate prevention
+ * UPDATED: Handles CHECK constraint for reviewer data consistency
  * Supports both registered users and guest reviewers
  */
 const createReview = async (req, res) => {
   const {
     articleId,
-    reviewerId, // NEW: Preferred - use existing reviewer
-    userId, // NEW: Alternative - link to user account
-    reviewerName, // For guest reviewers
+    reviewerId, // Option 1: Use existing reviewer
+    userId, // Option 2: Link to user account
+    reviewerName, // Option 3: Guest reviewer
     affiliation, // For guest reviewers
     expertiseArea,
     reviewDate,
@@ -122,7 +124,9 @@ const createReview = async (req, res) => {
 
     let finalReviewerId;
 
-    // Case 1: ReviewerID provided - use it directly
+    // ================================================================
+    // CASE 1: ReviewerID provided - use it directly
+    // ================================================================
     if (reviewerId) {
       const [reviewer] = await conn.query(
         "SELECT ReviewerID FROM Reviewer WHERE ReviewerID = ?",
@@ -144,7 +148,9 @@ const createReview = async (req, res) => {
         );
       }
     }
-    // Case 2: UserID provided - find or create reviewer for this user
+    // ================================================================
+    // CASE 2: UserID provided - find or create reviewer for this user
+    // ================================================================
     else if (userId) {
       // Verify user exists
       const [user] = await conn.query(
@@ -175,6 +181,7 @@ const createReview = async (req, res) => {
         }
       } else {
         // Create new reviewer linked to user
+        // Name and Affiliation will be NULL (comes from UserAccount via join)
         const [reviewerResult] = await conn.query(
           "INSERT INTO Reviewer (ExpertiseArea, UserID) VALUES (?, ?)",
           [expertiseArea || null, userId],
@@ -182,7 +189,9 @@ const createReview = async (req, res) => {
         finalReviewerId = reviewerResult.insertId;
       }
     }
-    // Case 3: Guest reviewer by name
+    // ================================================================
+    // CASE 3: Guest reviewer by name
+    // ================================================================
     else {
       // Check if guest reviewer with this name exists
       const [existingReviewer] = await conn.query(
@@ -218,21 +227,22 @@ const createReview = async (req, res) => {
       }
     }
 
-    // Check for duplicate review (trigger will also catch this, but better to check first)
-    const [existingReview] = await conn.query(
-      "SELECT ReviewID FROM Review WHERE ArticleID = ? AND ReviewerID = ?",
-      [articleId, finalReviewerId],
-    );
+    // ================================================================
+    // PARTITION JOIN OPTIMIZATION:
+    // NO NEED to manually check for duplicate reviews!
+    // The UNIQUE(ArticleID, ReviewerID) constraint handles this automatically
+    // ================================================================
 
-    if (existingReview.length > 0) {
-      await conn.rollback();
-      return res.status(400).json({
-        error: "This reviewer has already reviewed this article",
-        existingReviewId: existingReview[0].ReviewID,
-      });
-    }
+    // Old code (REMOVED - no longer needed):
+    // const [existingReview] = await conn.query(
+    //   "SELECT ReviewID FROM Review WHERE ArticleID = ? AND ReviewerID = ?",
+    //   [articleId, finalReviewerId]
+    // );
+    // if (existingReview.length > 0) {
+    //   return res.status(400).json({ error: "Duplicate review..." });
+    // }
 
-    // Create the review
+    // Create the review - UNIQUE constraint will automatically prevent duplicates
     const [reviewResult] = await conn.query(
       "INSERT INTO Review (ArticleID, ReviewerID, ReviewDate, Comments, Recommendation) VALUES (?, ?, ?, ?, ?)",
       [
@@ -277,16 +287,52 @@ const createReview = async (req, res) => {
     await conn.rollback();
     console.error("Error adding review:", err);
 
-    // Handle trigger error for duplicate review
-    if (
-      err.sqlState === "45000" &&
-      err.sqlMessage.includes("Duplicate review")
-    ) {
+    // ================================================================
+    // PARTITION JOIN ERROR HANDLING:
+    // Handle UNIQUE constraint violation (replaces trigger-based check)
+    // ================================================================
+    if (err.code === "ER_DUP_ENTRY") {
+      // Check if it's the uk_article_reviewer constraint
+      if (err.sqlMessage && err.sqlMessage.includes("uk_article_reviewer")) {
+        return res.status(400).json({
+          error: "This reviewer has already reviewed this article",
+          details: "Each reviewer can only review an article once",
+          constraint: "uk_article_reviewer",
+          sqlError: err.code,
+        });
+      }
+      // Generic duplicate entry error
       return res.status(400).json({
-        error: err.sqlMessage,
+        error: "Duplicate entry detected",
+        message: err.message,
       });
     }
 
+    // ================================================================
+    // Handle CHECK constraint violations
+    // ================================================================
+    if (err.code === "ER_CHECK_CONSTRAINT_VIOLATED") {
+      // Reviewer data consistency constraint
+      if (
+        err.sqlMessage &&
+        err.sqlMessage.includes("chk_reviewer_data_consistency")
+      ) {
+        return res.status(400).json({
+          error: "Reviewer data consistency violation",
+          details:
+            "Registered reviewers (with UserID) cannot have local Name/Affiliation. Guest reviewers must have a Name.",
+          constraint: "chk_reviewer_data_consistency",
+          sqlError: err.code,
+        });
+      }
+      // Generic check constraint error
+      return res.status(400).json({
+        error: "Check constraint violation",
+        message: err.message,
+      });
+    }
+
+    // Generic error
     res.status(500).json({
       error: "Failed to add review",
       message: err.message,
@@ -414,6 +460,33 @@ const getReviewStatsByArticle = async (req, res) => {
   }
 };
 
+/**
+ * Get reviews by reviewer ID
+ */
+const getReviewsByReviewer = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        r.*,
+        ra.Title AS ArticleTitle,
+        ra.DOI AS ArticleDOI,
+        ra.Status AS ArticleStatus,
+        ra.SubmissionDate
+      FROM Review r
+      JOIN ResearchArticle ra ON r.ArticleID = ra.ArticleID
+      WHERE r.ReviewerID = ?
+      ORDER BY r.ReviewDate DESC
+      `,
+      [req.params.id],
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching reviews by reviewer:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   getAllReviews,
   getReviewsByArticle,
@@ -421,4 +494,5 @@ module.exports = {
   updateReview,
   deleteReview,
   getReviewStatsByArticle,
+  getReviewsByReviewer,
 };
