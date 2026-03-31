@@ -3,12 +3,10 @@ const pool = require("../db/config");
 /**
  * User login
  * WARNING: Uses plain-text password comparison (not recommended for production)
- * In production, use bcrypt for password hashing and comparison
  */
 const login = async (req, res) => {
   const { username, password } = req.body;
 
-  // Validation
   if (!username || !password) {
     return res.status(400).json({
       error: "Username and password are required",
@@ -22,23 +20,17 @@ const login = async (req, res) => {
     );
 
     if (users.length === 0) {
-      return res.status(401).json({
-        error: "Invalid username or password",
-      });
+      return res.status(401).json({ error: "Invalid username or password" });
     }
 
     const user = users[0];
 
-    // Plain-text comparison (in production, use bcrypt.compare)
-    // const bcrypt = require('bcrypt');
-    // const isValid = await bcrypt.compare(password, user.PasswordHash);
+    // Plain-text comparison — in production use bcrypt.compare
     if (password !== user.PasswordHash) {
-      return res.status(401).json({
-        error: "Invalid username or password",
-      });
+      return res.status(401).json({ error: "Invalid username or password" });
     }
 
-    // Check if user has Author/Reviewer records
+    // Fetch Author and Reviewer profile IDs if they exist
     const [author] = await pool.query(
       "SELECT AuthorID FROM Author WHERE UserID = ?",
       [user.UserID],
@@ -49,8 +41,7 @@ const login = async (req, res) => {
       [user.UserID],
     );
 
-    // Return user info (exclude password hash)
-    res.json({
+    return res.json({
       userId: user.UserID,
       username: user.Username,
       email: user.Email,
@@ -65,22 +56,26 @@ const login = async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({
-      error: "Login failed",
-      message: err.message,
-    });
+    return res
+      .status(500)
+      .json({ error: "Login failed", message: err.message });
   }
 };
 
 /**
- * User signup using stored procedure (ensures data integrity)
- * WARNING: Stores plain-text password (not recommended for production)
- * In production, hash password before calling procedure
+ * User signup
+ * Uses stored procedure `create_user_if_unique` for uniqueness enforcement.
+ * Also creates Author / Reviewer profile rows based on role.
+ *
+ * FIX: Author.Name and Reviewer.Name are NOT NULL in schema — we pass
+ * newUser.Username as the initial Name value. Because these rows are linked
+ * via UserID, all frontend queries use COALESCE(u.Username, a.Name) so the
+ * displayed name always comes from UserAccount going forward.
  */
 const signup = async (req, res) => {
   const { username, password, email, affiliation, orcid, role } = req.body;
 
-  // Validation
+  // ── Validation ──────────────────────────────────────────────────────────────
   if (!username || !password || !email) {
     return res.status(400).json({
       error: "Username, password, and email are required",
@@ -93,7 +88,6 @@ const signup = async (req, res) => {
     });
   }
 
-  // Validate role if provided
   const validRoles = ["Author", "Reviewer", "Admin"];
   const userRole = role || "Author";
 
@@ -104,16 +98,15 @@ const signup = async (req, res) => {
   }
 
   try {
-    // In production, hash the password:
+    // ── Call stored procedure ─────────────────────────────────────────────────
+    // In production, hash the password first:
     // const bcrypt = require('bcrypt');
     // const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Call stored procedure for user creation (ensures uniqueness and validation)
     const [rows] = await pool.query(
       "CALL create_user_if_unique(?, ?, ?, ?, ?, ?)",
       [
         username,
-        password, // In production: use hashedPassword
+        password, // production: use hashedPassword
         email,
         affiliation || null,
         orcid || null,
@@ -125,59 +118,61 @@ const signup = async (req, res) => {
 
     if (!newUser) {
       return res.status(500).json({
-        error: "Registration failed - user data not returned",
+        error: "Registration failed — user data not returned from procedure",
       });
     }
 
-    // Create Author/Reviewer record based on role
+    // ── Create Author / Reviewer profile rows ─────────────────────────────────
+    // Author.Name and Reviewer.Name are NOT NULL in the schema.
+    // We store the username as the initial Name so the INSERT doesn't violate
+    // the constraint. The actual displayed name resolves via lossless join:
+    //   COALESCE(u.Username, a.Name) — so UserAccount is always the source.
     let authorId = null;
     let reviewerId = null;
 
     if (userRole === "Author" || userRole === "Admin") {
       const [authorResult] = await pool.query(
-        "INSERT INTO Author (UserID) VALUES (?)",
-        [newUser.UserID],
+        "INSERT INTO Author (Name, UserID) VALUES (?, ?)",
+        [newUser.Username, newUser.UserID],
       );
       authorId = authorResult.insertId;
     }
 
     if (userRole === "Reviewer" || userRole === "Admin") {
       const [reviewerResult] = await pool.query(
-        "INSERT INTO Reviewer (UserID) VALUES (?)",
-        [newUser.UserID],
+        "INSERT INTO Reviewer (Name, UserID) VALUES (?, ?)",
+        [newUser.Username, newUser.UserID],
       );
       reviewerId = reviewerResult.insertId;
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       userId: newUser.UserID,
       username: newUser.Username,
       email: newUser.Email,
       affiliation: newUser.Affiliation,
       orcid: newUser.ORCID,
       role: newUser.Role,
-      authorId: authorId,
-      reviewerId: reviewerId,
+      authorId,
+      reviewerId,
       message: "User registered successfully",
     });
   } catch (err) {
     console.error("Signup error:", err);
 
-    // Handle custom SIGNAL errors from the stored procedure
+    // SIGNAL from stored procedure (duplicate username / email)
     if (err.sqlState === "45000" && err.sqlMessage) {
-      return res.status(400).json({
-        error: err.sqlMessage,
-      });
+      return res.status(400).json({ error: err.sqlMessage });
     }
 
-    // Handle duplicate entry errors
+    // MySQL unique constraint fallback
     if (err.code === "ER_DUP_ENTRY") {
-      return res.status(400).json({
-        error: "Username or email already exists",
-      });
+      return res
+        .status(400)
+        .json({ error: "Username or email already exists" });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       error: "Registration failed",
       message: err.message,
     });
@@ -185,16 +180,11 @@ const signup = async (req, res) => {
 };
 
 /**
- * Logout (if using sessions)
- * For JWT-based auth, client should delete token
+ * Logout
+ * No server-side session used — client clears its own stored auth state.
  */
 const logout = async (req, res) => {
-  // If using sessions:
-  // req.session.destroy();
-
-  res.json({
-    message: "Logged out successfully",
-  });
+  return res.json({ message: "Logged out successfully" });
 };
 
 /**
@@ -202,7 +192,7 @@ const logout = async (req, res) => {
  */
 const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  const userId = req.params.id; // Assume auth middleware sets this
+  const userId = req.params.id;
 
   if (!currentPassword || !newPassword) {
     return res.status(400).json({
@@ -217,7 +207,6 @@ const changePassword = async (req, res) => {
   }
 
   try {
-    // Verify current password
     const [users] = await pool.query(
       "SELECT PasswordHash FROM UserAccount WHERE UserID = ?",
       [userId],
@@ -227,34 +216,25 @@ const changePassword = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Plain-text comparison (in production, use bcrypt.compare)
+    // Plain-text comparison — in production use bcrypt.compare
     if (currentPassword !== users[0].PasswordHash) {
-      return res.status(401).json({
-        error: "Current password is incorrect",
-      });
+      return res.status(401).json({ error: "Current password is incorrect" });
     }
 
-    // Update to new password (in production, hash first)
+    // In production, hash newPassword before storing
     await pool.query(
       "UPDATE UserAccount SET PasswordHash = ? WHERE UserID = ?",
       [newPassword, userId],
     );
 
-    res.json({
-      message: "Password changed successfully",
-    });
+    return res.json({ message: "Password changed successfully" });
   } catch (err) {
     console.error("Change password error:", err);
-    res.status(500).json({
+    return res.status(500).json({
       error: "Failed to change password",
       message: err.message,
     });
   }
 };
 
-module.exports = {
-  login,
-  signup,
-  logout,
-  changePassword,
-};
+module.exports = { login, signup, logout, changePassword };

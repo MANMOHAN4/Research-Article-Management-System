@@ -117,25 +117,22 @@ const searchArticles = async (req, res) => {
  */
 const getArticleById = async (req, res) => {
   try {
-    // Get article with journal/conference info
+    // ArticleAgeDays computed in JS — no MySQL function dependency
     const [articles] = await pool.query(
-      `
-      SELECT
+      `SELECT
         ra.*,
-        j.Name AS JournalName, 
-        j.Publisher, 
+        j.Name        AS JournalName,
+        j.Publisher,
         j.ImpactFactor,
         j.ISSN,
-        c.Name AS ConferenceName, 
-        c.Location, 
-        c.StartDate, 
-        c.EndDate,
-        article_age_days(ra.ArticleID) AS ArticleAgeDays
+        c.Name        AS ConferenceName,
+        c.Location,
+        c.StartDate,
+        c.EndDate
       FROM ResearchArticle ra
-      LEFT JOIN Journal j ON ra.JournalID = j.JournalID
+      LEFT JOIN Journal    j ON ra.JournalID    = j.JournalID
       LEFT JOIN Conference c ON ra.ConferenceID = c.ConferenceID
-      WHERE ra.ArticleID = ?
-      `,
+      WHERE ra.ArticleID = ?`,
       [req.params.id],
     );
 
@@ -143,64 +140,60 @@ const getArticleById = async (req, res) => {
       return res.status(404).json({ error: "Article not found" });
     }
 
-    // Get authors with lossless join (Author ⋈ UserAccount)
+    const article = articles[0];
+
+    // Compute age in JS — same result, no stored function needed
+    article.ArticleAgeDays = article.SubmissionDate
+      ? Math.floor((Date.now() - new Date(article.SubmissionDate)) / 86_400_000)
+      : null;
+
+    // Get authors
     const [authors] = await pool.query(
-      `
-      SELECT 
+      `SELECT
         a.AuthorID,
-        COALESCE(u.Username, a.Name) as Name,
-        COALESCE(u.Email, 'N/A') as Email,
-        COALESCE(u.Affiliation, a.Affiliation) as Affiliation,
-        COALESCE(u.ORCID, a.ORCID) as ORCID,
+        COALESCE(u.Username, a.Name)        AS Name,
+        COALESCE(u.Email, 'N/A')            AS Email,
+        COALESCE(u.Affiliation, a.Affiliation) AS Affiliation,
+        COALESCE(u.ORCID, a.ORCID)          AS ORCID,
         a.UserID,
-        CASE WHEN a.UserID IS NOT NULL THEN 'Registered' ELSE 'Guest' END as UserType
+        CASE WHEN a.UserID IS NOT NULL THEN 'Registered' ELSE 'Guest' END AS UserType
       FROM Author a
       JOIN ArticleAuthor aa ON a.AuthorID = aa.AuthorID
       LEFT JOIN UserAccount u ON a.UserID = u.UserID
       WHERE aa.ArticleID = ?
-      ORDER BY a.Name
-      `,
+      ORDER BY a.Name`,
       [req.params.id],
     );
 
-    // Get keywords with lossless join (ArticleKeyword ⋈ Keyword)
+    // Get keywords
     const [keywords] = await pool.query(
-      `
-      SELECT k.KeywordID, k.KeywordText
+      `SELECT k.KeywordID, k.KeywordText
       FROM Keyword k
       JOIN ArticleKeyword ak ON k.KeywordID = ak.KeywordID
       WHERE ak.ArticleID = ?
-      ORDER BY k.KeywordText
-      `,
+      ORDER BY k.KeywordText`,
       [req.params.id],
     );
 
-    // Get reviews with lossless join (Review ⋈ Reviewer ⋈ UserAccount)
+    // Get reviews
     const [reviews] = await pool.query(
-      `
-      SELECT 
+      `SELECT
         r.*,
-        COALESCE(u.Username, rev.Name) AS ReviewerName,
+        COALESCE(u.Username, rev.Name)           AS ReviewerName,
         COALESCE(u.Affiliation, rev.Affiliation) AS ReviewerAffiliation,
         rev.ExpertiseArea
       FROM Review r
       JOIN Reviewer rev ON r.ReviewerID = rev.ReviewerID
       LEFT JOIN UserAccount u ON rev.UserID = u.UserID
       WHERE r.ArticleID = ?
-      ORDER BY r.ReviewDate DESC
-      `,
+      ORDER BY r.ReviewDate DESC`,
       [req.params.id],
     );
 
-    res.json({
-      ...articles[0],
-      authors,
-      keywords,
-      reviews,
-    });
+    return res.json({ ...article, authors, keywords, reviews });
   } catch (err) {
     console.error("Error fetching article:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 

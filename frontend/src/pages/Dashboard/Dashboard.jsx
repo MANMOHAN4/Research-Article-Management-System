@@ -1,217 +1,132 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { statsAPI, citationAPI } from "@/api/endpoint";
-import Loader from "@/components/ui/Loader";
+import { statsAPI } from "../../api/endpoint.js";
 import {
   FileText,
   Users,
-  BookOpen,
-  Calendar,
-  Star,
-  UserCheck,
-  TrendingUp,
+  BookMarked,
+  CalendarDays,
+  Quote,
+  Tag,
 } from "lucide-react";
+import Loader from "../../components/ui/Loader.jsx";
 
-const Dashboard = () => {
-  const navigate = useNavigate();
+function StatCard({ label, value, icon: Icon, accent }) {
+  return (
+    <div className="glass-card p-5">
+      <div className="flex items-start justify-between mb-4">
+        <div
+          className={`h-9 w-9 rounded-lg flex items-center justify-center
+          ${accent ? "bg-amber-500/15 border border-amber-500/20" : "bg-white/5 border border-white/8"}`}
+        >
+          <Icon
+            size={16}
+            strokeWidth={1.5}
+            className={accent ? "text-amber-500" : "text-zinc-400"}
+          />
+        </div>
+      </div>
+      <p
+        className="text-2xl font-semibold text-white tracking-tight mb-1"
+        style={{ fontFamily: "'Space Grotesk',sans-serif" }}
+      >
+        {value ?? "—"}
+      </p>
+      <p className="text-xs text-zinc-500 font-mono tracking-wide uppercase">
+        {label}
+      </p>
+    </div>
+  );
+}
 
-  const { data: stats, isLoading } = useQuery({
+export default function Dashboard() {
+  const { data, isLoading, error } = useQuery({
     queryKey: ["stats"],
-    queryFn: () => statsAPI.getStats().then((res) => res.data),
+    queryFn: () => statsAPI.getOverview().then((r) => r.data),
   });
 
-  const { data: health } = useQuery({
-    queryKey: ["health"],
-    queryFn: () => statsAPI.getHealth().then((res) => res.data),
-  });
-
-  const { data: citationStats } = useQuery({
-    queryKey: ["citationStats"],
-    queryFn: () => citationAPI.getStats().then((res) => res.data),
-  });
-
-  const statCards = [
-    {
-      label: "Articles",
-      value: stats?.articles || 0,
-      icon: FileText,
-      gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      iconBg: "rgba(255, 255, 255, 0.25)",
-    },
-    {
-      label: "Authors",
-      value: stats?.authors || 0,
-      icon: Users,
-      gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-      iconBg: "rgba(255, 255, 255, 0.25)",
-    },
-    {
-      label: "Journals",
-      value: stats?.journals || 0,
-      icon: BookOpen,
-      gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-      iconBg: "rgba(255, 255, 255, 0.25)",
-    },
-    {
-      label: "Conferences",
-      value: stats?.conferences || 0,
-      icon: Calendar,
-      gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-      iconBg: "rgba(255, 255, 255, 0.25)",
-    },
-  ];
-
-  if (isLoading) {
+  if (isLoading)
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader size="lg" />
+      <div className="flex justify-center py-20">
+        <Loader text="Loading stats…" />
       </div>
     );
-  }
+  if (error)
+    return (
+      <div className="py-20 text-center text-red-400 text-sm">
+        Failed to load stats.
+      </div>
+    );
+
+  const o = data?.overview || {};
+  const stats = [
+    {
+      label: "Total Articles",
+      value: o.articles,
+      icon: FileText,
+      accent: true,
+    },
+    { label: "Authors", value: o.authors, icon: Users, accent: false },
+    { label: "Journals", value: o.journals, icon: BookMarked, accent: false },
+    {
+      label: "Conferences",
+      value: o.conferences,
+      icon: CalendarDays,
+      accent: false,
+    },
+    { label: "Reviews", value: o.reviews, icon: Quote, accent: false },
+    { label: "Keywords", value: o.keywords, icon: Tag, accent: false },
+  ];
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2">Dashboard</h1>
-        <p className="text-white text-opacity-90 text-lg">
-          Overview of your research management system
+    <div className="max-w-6xl mx-auto space-y-8">
+      {/* Header */}
+      <div>
+        <h1
+          className="text-2xl font-semibold text-white tracking-tight mb-1"
+          style={{ fontFamily: "'Space Grotesk',sans-serif" }}
+        >
+          Overview
+        </h1>
+        <p className="text-sm text-zinc-500">
+          Research Article Management System
         </p>
-        {health && (
-          <div
-            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium shadow-lg"
-            style={{
-              background: "rgba(255, 255, 255, 0.25)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-              border: "1px solid rgba(255, 255, 255, 0.3)",
-              color: "#ffffff",
-            }}
-          >
-            <span
-              style={{
-                width: "0.5rem",
-                height: "0.5rem",
-                borderRadius: "50%",
-                backgroundColor: "#4ade80",
-                display: "block",
-                boxShadow: "0 0 10px #4ade80",
-              }}
-            ></span>
-            System Healthy
-          </div>
-        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.label}
-              className="rounded-2xl p-6 text-white transform transition-all duration-300 hover:scale-105 cursor-pointer"
-              style={{
-                background: stat.gradient,
-                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.2)",
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white text-opacity-90 text-sm font-medium mb-1">
-                    {stat.label}
-                  </p>
-                  <p className="text-4xl font-bold">{stat.value}</p>
-                </div>
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                  style={{
-                    background: stat.iconBg,
-                    backdropFilter: "blur(10px)",
-                    WebkitBackdropFilter: "blur(10px)",
-                    border: "1px solid rgba(255, 255, 255, 0.3)",
-                  }}
-                >
-                  <Icon
-                    className="w-8 h-8"
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {stats.map((s) => (
+          <StatCard key={s.label} {...s} />
+        ))}
+      </div>
+
+      {/* Status breakdown */}
+      {data?.articleStatusBreakdown?.length > 0 && (
+        <div className="glass-card p-6">
+          <h2 className="text-sm font-semibold text-zinc-200 mb-4 font-mono tracking-wide uppercase">
+            Article Status
+          </h2>
+          <div className="space-y-3">
+            {data.articleStatusBreakdown.map((row) => (
+              <div key={row.Status} className="flex items-center gap-3">
+                <span className="text-xs text-zinc-500 font-mono w-28 shrink-0">
+                  {row.Status}
+                </span>
+                <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-amber-500/70 transition-all duration-700"
                     style={{
-                      color: "#ffffff",
-                      filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))",
+                      width: `${Math.min(100, (row.Count / (o.articles || 1)) * 100)}%`,
                     }}
                   />
                 </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="card">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <TrendingUp className="w-6 h-6 text-purple-600" />
-          Most Cited Articles
-        </h2>
-        {citationStats?.length > 0 ? (
-          <div className="space-y-3">
-            {citationStats.slice(0, 5).map((stat, idx) => (
-              <div
-                key={stat.ArticleID}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                onClick={() => navigate(`/articles/${stat.ArticleID}`)}
-              >
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <span
-                    className="text-2xl font-bold text-transparent bg-clip-text shrink-0"
-                    style={{
-                      background:
-                        idx === 0
-                          ? "linear-gradient(135deg, #FFD700, #FFA500)"
-                          : idx === 1
-                            ? "linear-gradient(135deg, #C0C0C0, #808080)"
-                            : idx === 2
-                              ? "linear-gradient(135deg, #CD7F32, #8B4513)"
-                              : "linear-gradient(135deg, #667eea, #764ba2)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    }}
-                  >
-                    #{idx + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">
-                      {stat.Title}
-                    </p>
-                    {stat.DOI && (
-                      <p className="text-sm text-gray-600 truncate">
-                        {stat.DOI}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <span
-                  className="px-4 py-2 rounded-full text-sm font-bold shrink-0"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                    color: "#ffffff",
-                  }}
-                >
-                  {stat.CitationCount}{" "}
-                  {stat.CitationCount === 1 ? "citation" : "citations"}
+                <span className="text-xs text-zinc-500 font-mono w-8 text-right">
+                  {row.Count}
                 </span>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">No citation data yet</p>
-            <p className="text-gray-400 text-sm mt-2">
-              Citations will appear here once articles start citing each other
-            </p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default Dashboard;
+}

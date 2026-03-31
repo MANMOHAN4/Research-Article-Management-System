@@ -1,267 +1,167 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { journalAPI } from "@/api/endpoint";
-import { useToastStore } from "@/store/toastStore";
-import { useAuthStore } from "@/store/authStore";
-import Loader from "@/components/ui/Loader";
-import Modal from "@/components/ui/Modal";
-import { Plus, BookOpen, Edit, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { journalAPI } from "../../api/endpoint.js";
+import JournalCard from "../../components/cards/JournalCard.jsx";
+import Modal from "../../components/ui/Modal.jsx";
+import Loader from "../../components/ui/Loader.jsx";
+import { useToastStore } from "../../store/toastStore.js";
+import { Plus } from "lucide-react";
 
-const JournalList = () => {
-  const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === "Admin";
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingJournal, setEditingJournal] = useState(null);
-  const [formData, setFormData] = useState({
+const inputCls = `w-full h-11 px-3.5 rounded-lg text-sm text-zinc-200 placeholder:text-zinc-600
+  bg-[rgba(26,26,36,0.6)] border border-white/8 focus:outline-none
+  focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all`;
+
+export default function JournalList() {
+  const qc = useQueryClient();
+  const addToast = useToastStore((s) => s.addToast);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({
     name: "",
     publisher: "",
     issn: "",
     impactFactor: "",
   });
 
-  const queryClient = useQueryClient();
-  const addToast = useToastStore((s) => s.addToast);
-
-  const { data: journals, isLoading } = useQuery({
+  const { data = [], isLoading } = useQuery({
     queryKey: ["journals"],
-    queryFn: () => journalAPI.getAll().then((res) => res.data),
+    queryFn: () => journalAPI.getAll().then((r) => r.data),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data) => journalAPI.create(data),
+  const save = useMutation({
+    mutationFn: (d) =>
+      editing ? journalAPI.update(editing.JournalID, d) : journalAPI.create(d),
     onSuccess: () => {
-      addToast({ type: "success", message: "Journal created successfully" });
-      queryClient.invalidateQueries(["journals"]);
+      qc.invalidateQueries(["journals"]);
+      addToast(editing ? "Journal updated" : "Journal created");
       closeModal();
     },
-    onError: () =>
-      addToast({ type: "error", message: "Failed to create journal" }),
+    onError: (err) =>
+      addToast(err.response?.data?.error || "Save failed", "error"),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => journalAPI.update(id, data),
-    onSuccess: () => {
-      addToast({ type: "success", message: "Journal updated successfully" });
-      queryClient.invalidateQueries(["journals"]);
-      closeModal();
-    },
-    onError: () =>
-      addToast({ type: "error", message: "Failed to update journal" }),
-  });
-
-  const deleteMutation = useMutation({
+  const del = useMutation({
     mutationFn: (id) => journalAPI.delete(id),
     onSuccess: () => {
-      addToast({ type: "success", message: "Journal deleted successfully" });
-      queryClient.invalidateQueries(["journals"]);
+      qc.invalidateQueries(["journals"]);
+      addToast("Journal deleted");
     },
-    onError: () =>
-      addToast({ type: "error", message: "Failed to delete journal" }),
+    onError: (err) =>
+      addToast(err.response?.data?.error || "Delete failed", "error"),
   });
 
-  const openModal = (journal = null) => {
-    if (journal) {
-      setEditingJournal(journal);
-      setFormData({
-        name: journal.Name || "",
-        publisher: journal.Publisher || "",
-        issn: journal.ISSN || "",
-        impactFactor: journal.ImpactFactor || "",
-      });
-    } else {
-      setEditingJournal(null);
-      setFormData({ name: "", publisher: "", issn: "", impactFactor: "" });
-    }
-    setIsModalOpen(true);
-  };
-
   const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingJournal(null);
-    setFormData({ name: "", publisher: "", issn: "", impactFactor: "" });
+    setModal(false);
+    setEditing(null);
+    setForm({ name: "", publisher: "", issn: "", impactFactor: "" });
   };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (editingJournal) {
-      updateMutation.mutate({ id: editingJournal.JournalID, data: formData });
-    } else {
-      createMutation.mutate(formData);
-    }
-  };
-
-  const handleDelete = (id) => {
-    if (confirm("Are you sure you want to delete this journal?")) {
-      deleteMutation.mutate(id);
-    }
+  const openEdit = (j) => {
+    setEditing(j);
+    setForm({
+      name: j.Name,
+      publisher: j.Publisher || "",
+      issn: j.ISSN || "",
+      impactFactor: j.ImpactFactor || "",
+    });
+    setModal(true);
   };
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Journals</h1>
-          <p className="text-white text-opacity-90">
-            Browse and manage journals
-          </p>
-        </div>
-        {isAdmin && (
-          <button
-            onClick={() => openModal()}
-            className="btn btn-primary flex items-center gap-2"
+          <h1
+            className="text-2xl font-semibold text-white tracking-tight"
+            style={{ fontFamily: "'Space Grotesk',sans-serif" }}
           >
-            <Plus className="w-5 h-5" />
-            New Journal
-          </button>
-        )}
+            Journals
+          </h1>
+          <p className="text-sm text-zinc-500 mt-0.5">{data.length} total</p>
+        </div>
+        <button
+          onClick={() => setModal(true)}
+          className="h-9 px-4 rounded-lg text-sm font-medium text-[#0A0A0F] bg-amber-500
+            hover:brightness-110 active:scale-[0.98] transition-all flex items-center gap-2 focus-ring"
+          style={{ boxShadow: "0 0 16px rgba(245,158,11,0.25)" }}
+        >
+          <Plus size={15} strokeWidth={2} /> Add Journal
+        </button>
       </div>
 
-      <div className="card">
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {(journals || []).map((journal) => (
-              <div
-                key={journal.JournalID}
-                className="card hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  {/* Left: Icon and Info */}
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div
-                      className="w-12 h-12 rounded-lg flex items-center justify-center text-white shrink-0"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-                      }}
-                    >
-                      <BookOpen className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 text-lg truncate">
-                        {journal.Name}
-                      </h3>
-                      <p className="text-sm text-gray-600 truncate">
-                        {journal.Publisher || "—"}
-                      </p>
-                    </div>
-                  </div>
-                  {/* Metadata */}
-                  <div className="flex items-center gap-6">
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">ISSN:</span>{" "}
-                      {journal.ISSN || "—"}
-                    </div>
-                    <div className="px-3 py-1 rounded bg-purple-100 text-purple-700 text-sm font-medium">
-                      IF: {journal.ImpactFactor ?? "—"}
-                    </div>
-                  </div>
-                  {/* Admin controls */}
-                  {isAdmin && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openModal(journal)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Edit"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(journal.JournalID)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <Loader />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {data.map((j) => (
+            <JournalCard
+              key={j.JournalID}
+              journal={j}
+              onEdit={openEdit}
+              onDelete={(j2) => {
+                if (confirm("Delete journal?")) del.mutate(j2.JournalID);
+              }}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* Modal for Create/Edit */}
       <Modal
-        isOpen={isModalOpen}
+        open={modal}
         onClose={closeModal}
-        title={editingJournal ? "Edit Journal" : "New Journal"}
+        title={editing ? "Edit Journal" : "New Journal"}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              className="input"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Publisher
-            </label>
-            <input
-              type="text"
-              value={formData.publisher}
-              onChange={(e) =>
-                setFormData({ ...formData, publisher: e.target.value })
-              }
-              className="input"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              ISSN
-            </label>
-            <input
-              type="text"
-              value={formData.issn}
-              onChange={(e) =>
-                setFormData({ ...formData, issn: e.target.value })
-              }
-              className="input"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Impact Factor
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.impactFactor}
-              onChange={(e) =>
-                setFormData({ ...formData, impactFactor: e.target.value })
-              }
-              className="input"
-            />
-          </div>
-          <div className="flex gap-3">
-            <button type="submit" className="btn btn-primary">
-              {editingJournal ? "Update" : "Create"}
-            </button>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            save.mutate(form);
+          }}
+          className="space-y-4"
+        >
+          {[
+            ["name", "Name *", "Nature", true],
+            ["publisher", "Publisher", "Springer", false],
+            ["issn", "ISSN", "0000-0000", false],
+            ["impactFactor", "Impact Factor", "4.5", false],
+          ].map(([key, label, ph, req]) => (
+            <div key={key}>
+              <label className="block text-xs font-mono text-zinc-500 mb-1.5 uppercase tracking-wide">
+                {label}
+              </label>
+              <input
+                value={form[key]}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, [key]: e.target.value }))
+                }
+                placeholder={ph}
+                required={req}
+                type={key === "impactFactor" ? "number" : "text"}
+                step="0.001"
+                min="0"
+                className={inputCls}
+              />
+            </div>
+          ))}
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={closeModal}
-              className="btn btn-secondary"
+              className="flex-1 h-10 rounded-lg border border-white/10 text-zinc-400 hover:border-white/20 text-sm transition-all focus-ring"
             >
               Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={save.isPending}
+              className="flex-1 h-10 rounded-lg bg-amber-500 text-[#0A0A0F] text-sm font-medium
+                hover:brightness-110 transition-all disabled:opacity-50 focus-ring"
+            >
+              {save.isPending ? "Saving…" : "Save"}
             </button>
           </div>
         </form>
       </Modal>
     </div>
   );
-};
-
-export default JournalList;
+}

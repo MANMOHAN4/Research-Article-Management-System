@@ -1,44 +1,57 @@
-const Table = ({ columns, data, onRowClick }) => {
+export default function Table({
+  columns,
+  data,
+  onRowClick,
+  emptyMessage = "No records found.",
+  loading = false,
+}) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead className="bg-gray-50 border-b-2 border-gray-200">
-          <tr>
-            {columns.map((column, idx) => (
+    <div className="rounded-xl border border-white/8 overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-[#12121A] border-b border-white/8">
+            {columns.map((col) => (
               <th
-                key={idx}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                key={col.key}
+                className="px-4 py-3 text-left text-xs font-mono text-zinc-500 tracking-widest uppercase whitespace-nowrap"
               >
-                {column.header}
+                {col.label}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {data.length === 0 ? (
+        <tbody>
+          {loading ? (
+            <tr>
+              <td colSpan={columns.length} className="px-4 py-10 text-center">
+                <div className="flex justify-center">
+                  <div className="h-6 w-6 rounded-full border-2 border-white/10 border-t-amber-500 animate-spin" />
+                </div>
+              </td>
+            </tr>
+          ) : data.length === 0 ? (
             <tr>
               <td
                 colSpan={columns.length}
-                className="px-6 py-8 text-center text-gray-500"
+                className="px-4 py-12 text-center text-sm text-zinc-600"
               >
-                No data available
+                {emptyMessage}
               </td>
             </tr>
           ) : (
-            data.map((row, rowIdx) => (
+            data.map((row, i) => (
               <tr
-                key={rowIdx}
+                key={row.id ?? row.ArticleID ?? row.AuthorID ?? row.UserID ?? i}
                 onClick={() => onRowClick?.(row)}
-                className={`${
-                  onRowClick ? "cursor-pointer hover:bg-gray-50" : ""
-                } transition-colors`}
+                className={`border-b border-white/5 last:border-0 transition-colors duration-150
+                  ${onRowClick ? "cursor-pointer hover:bg-white/[0.03]" : ""}`}
               >
-                {columns.map((column, colIdx) => (
+                {columns.map((col) => (
                   <td
-                    key={colIdx}
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                    key={col.key}
+                    className="px-4 py-3 text-zinc-300 align-middle"
                   >
-                    {column.render ? column.render(row) : row[column.accessor]}
+                    {col.render ? col.render(row) : (row[col.key] ?? "—")}
                   </td>
                 ))}
               </tr>
@@ -48,6 +61,4 @@ const Table = ({ columns, data, onRowClick }) => {
       </table>
     </div>
   );
-};
-
-export default Table;
+}

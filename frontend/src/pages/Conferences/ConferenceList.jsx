@@ -1,223 +1,161 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { conferenceAPI } from "@/api/endpoint";
-import { useAuthStore } from "@/store/authStore";
-import { useToastStore } from "@/store/toastStore";
-import CardList from "@/components/ui/CardList";
-import ConferenceCard from "@/components/cards/ConferenceCard";
-import Modal from "@/components/ui/Modal";
-import Loader from "@/components/ui/Loader";
+import { useState } from "react";
+import { conferenceAPI } from "../../api/endpoint.js";
+import ConferenceCard from "../../components/cards/ConferenceCard.jsx";
+import Modal from "../../components/ui/Modal.jsx";
+import Loader from "../../components/ui/Loader.jsx";
+import { useToastStore } from "../../store/toastStore.js";
 import { Plus } from "lucide-react";
 
-const ConferenceList = () => {
-  const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === "Admin";
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingConference, setEditingConference] = useState(null);
-  const [formData, setFormData] = useState({
+const inputCls = `w-full h-11 px-3.5 rounded-lg text-sm text-zinc-200 placeholder:text-zinc-600
+  bg-[rgba(26,26,36,0.6)] border border-white/8 focus:outline-none
+  focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all`;
+
+export default function ConferenceList() {
+  const qc = useQueryClient();
+  const addToast = useToastStore((s) => s.addToast);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({
     name: "",
     location: "",
     startDate: "",
     endDate: "",
   });
 
-  const queryClient = useQueryClient();
-  const addToast = useToastStore((s) => s.addToast);
-
-  const { data: conferences, isLoading } = useQuery({
+  const { data = [], isLoading } = useQuery({
     queryKey: ["conferences"],
-    queryFn: () => conferenceAPI.getAll().then((res) => res.data),
+    queryFn: () => conferenceAPI.getAll().then((r) => r.data),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data) => conferenceAPI.create(data),
+  const save = useMutation({
+    mutationFn: (d) =>
+      editing
+        ? conferenceAPI.update(editing.ConferenceID, d)
+        : conferenceAPI.create(d),
     onSuccess: () => {
-      addToast({ type: "success", message: "Conference created successfully" });
-      queryClient.invalidateQueries(["conferences"]);
+      qc.invalidateQueries(["conferences"]);
+      addToast(editing ? "Conference updated" : "Conference created");
       closeModal();
     },
-    onError: () =>
-      addToast({ type: "error", message: "Failed to create conference" }),
+    onError: (err) =>
+      addToast(err.response?.data?.error || "Save failed", "error"),
   });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => conferenceAPI.update(id, data),
-    onSuccess: () => {
-      addToast({ type: "success", message: "Conference updated successfully" });
-      queryClient.invalidateQueries(["conferences"]);
-      closeModal();
-    },
-    onError: () =>
-      addToast({ type: "error", message: "Failed to update conference" }),
-  });
-
-  const deleteMutation = useMutation({
+  const del = useMutation({
     mutationFn: (id) => conferenceAPI.delete(id),
     onSuccess: () => {
-      addToast({ type: "success", message: "Conference deleted successfully" });
-      queryClient.invalidateQueries(["conferences"]);
+      qc.invalidateQueries(["conferences"]);
+      addToast("Conference deleted");
     },
-    onError: () =>
-      addToast({ type: "error", message: "Failed to delete conference" }),
   });
 
-  const openModal = (conference = null) => {
-    if (conference) {
-      setEditingConference(conference);
-      setFormData({
-        name: conference.Name || "",
-        location: conference.Location || "",
-        startDate: conference.StartDate?.split("T")[0] || "",
-        endDate: conference.EndDate?.split("T")[0] || "",
-      });
-    } else {
-      setEditingConference(null);
-      setFormData({ name: "", location: "", startDate: "", endDate: "" });
-    }
-    setIsModalOpen(true);
-  };
-
   const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingConference(null);
-    setFormData({ name: "", location: "", startDate: "", endDate: "" });
+    setModal(false);
+    setEditing(null);
+    setForm({ name: "", location: "", startDate: "", endDate: "" });
   };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (editingConference) {
-      updateMutation.mutate({
-        id: editingConference.ConferenceID,
-        data: formData,
-      });
-    } else {
-      createMutation.mutate(formData);
-    }
-  };
-
-  const handleDelete = (id) => {
-    if (confirm("Are you sure you want to delete this conference?")) {
-      deleteMutation.mutate(id);
-    }
+  const openEdit = (c) => {
+    setEditing(c);
+    setForm({
+      name: c.Name,
+      location: c.Location || "",
+      startDate: c.StartDate?.split("T")[0] || "",
+      endDate: c.EndDate?.split("T")[0] || "",
+    });
+    setModal(true);
   };
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Conferences</h1>
-          <p className="text-white text-opacity-90">
-            Browse and manage conferences
-          </p>
-        </div>
-        {isAdmin && (
-          <button
-            onClick={() => openModal()}
-            className="btn btn-primary flex items-center gap-2"
+          <h1
+            className="text-2xl font-semibold text-white tracking-tight"
+            style={{ fontFamily: "'Space Grotesk',sans-serif" }}
           >
-            <Plus className="w-5 h-5" />
-            New Conference
-          </button>
-        )}
-      </div>
-
-      <div className="card">
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader />
-          </div>
-        ) : (
-          <CardList>
-            {(conferences || []).map((conference) => (
-              <ConferenceCard
-                key={conference.ConferenceID}
-                conference={conference}
-                isAdmin={isAdmin}
-                onEdit={() => openModal(conference)}
-                onDelete={() => handleDelete(conference.ConferenceID)}
-              />
-            ))}
-          </CardList>
-        )}
-      </div>
-
-      {isAdmin && (
-        <Modal
-          isOpen={isModalOpen}
-          onClose={closeModal}
-          title={editingConference ? "Edit Conference" : "New Conference"}
+            Conferences
+          </h1>
+          <p className="text-sm text-zinc-500 mt-0.5">{data.length} total</p>
+        </div>
+        <button
+          onClick={() => setModal(true)}
+          className="h-9 px-4 rounded-lg text-sm font-medium text-[#0A0A0F] bg-amber-500
+            hover:brightness-110 active:scale-[0.98] transition-all flex items-center gap-2 focus-ring"
+          style={{ boxShadow: "0 0 16px rgba(245,158,11,0.25)" }}
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Name *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="input"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location
-              </label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) =>
-                  setFormData({ ...formData, location: e.target.value })
-                }
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, startDate: e.target.value })
-                }
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, endDate: e.target.value })
-                }
-                className="input"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button type="submit" className="btn btn-primary">
-                {editingConference ? "Update" : "Create"}
-              </button>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="btn btn-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </Modal>
+          <Plus size={15} strokeWidth={2} /> Add Conference
+        </button>
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <Loader />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {data.map((c) => (
+            <ConferenceCard
+              key={c.ConferenceID}
+              conference={c}
+              onEdit={openEdit}
+              onDelete={(c2) => {
+                if (confirm("Delete?")) del.mutate(c2.ConferenceID);
+              }}
+            />
+          ))}
+        </div>
       )}
+      <Modal
+        open={modal}
+        onClose={closeModal}
+        title={editing ? "Edit Conference" : "New Conference"}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            save.mutate(form);
+          }}
+          className="space-y-4"
+        >
+          {[
+            ["name", "Name *", "NeurIPS 2025", true, "text"],
+            ["location", "Location", "Vancouver, Canada", false, "text"],
+            ["startDate", "Start Date", "", false, "date"],
+            ["endDate", "End Date", "", false, "date"],
+          ].map(([key, label, ph, req, type]) => (
+            <div key={key}>
+              <label className="block text-xs font-mono text-zinc-500 mb-1.5 uppercase tracking-wide">
+                {label}
+              </label>
+              <input
+                value={form[key]}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, [key]: e.target.value }))
+                }
+                placeholder={ph}
+                required={req}
+                type={type}
+                className={inputCls}
+              />
+            </div>
+          ))}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={closeModal}
+              className="flex-1 h-10 rounded-lg border border-white/10 text-zinc-400 hover:border-white/20 text-sm transition-all focus-ring"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={save.isPending}
+              className="flex-1 h-10 rounded-lg bg-amber-500 text-[#0A0A0F] text-sm font-medium hover:brightness-110 transition-all disabled:opacity-50 focus-ring"
+            >
+              {save.isPending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
-};
-
-export default ConferenceList;
+}

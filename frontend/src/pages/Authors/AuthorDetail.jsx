@@ -1,83 +1,72 @@
-import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
-import { authorAPI } from "@/api/endpoint";
-import Loader from "@/components/ui/Loader";
-import { ArrowLeft } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { authorAPI } from "../../api/endpoint.js";
+import ArticleCard from "../../components/cards/ArticleCard.jsx";
+import Loader from "../../components/ui/Loader.jsx";
+import { ArrowLeft, Building2, BookOpen } from "lucide-react";
 
-const AuthorDetail = () => {
+export default function AuthorDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
-
-  const { data: author, isLoading } = useQuery({
+  const nav = useNavigate();
+  const { data, isLoading } = useQuery({
     queryKey: ["author", id],
-    queryFn: () => authorAPI.getById(id).then((res) => res.data),
+    queryFn: () => authorAPI.getById(id).then((r) => r.data),
   });
 
-  if (isLoading) {
+  if (isLoading)
     return (
-      <div className="flex justify-center py-12">
-        <Loader size="lg" />
+      <div className="flex justify-center py-20">
+        <Loader />
       </div>
     );
-  }
-
-  if (!author) return <div>Author not found</div>;
+  if (!data)
+    return (
+      <div className="py-20 text-center text-zinc-600">Author not found.</div>
+    );
 
   return (
-    <div>
+    <div className="max-w-4xl mx-auto space-y-6">
       <button
-        onClick={() => navigate("/authors")}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        onClick={() => nav("/authors")}
+        className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
       >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Authors
+        <ArrowLeft size={16} strokeWidth={1.5} /> Back to Authors
       </button>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="card">
-          <h1 className="text-2xl font-bold mb-4">{author.Name}</h1>
-          <dl className="space-y-3">
-            {author.Affiliation && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">
-                  Affiliation
-                </dt>
-                <dd className="mt-1 text-gray-900">{author.Affiliation}</dd>
-              </div>
-            )}
-            {author.ORCID && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">ORCID</dt>
-                <dd className="mt-1 text-blue-600">{author.ORCID}</dd>
-              </div>
-            )}
-          </dl>
-        </div>
-
-        <div className="lg:col-span-2 card">
-          <h2 className="text-xl font-semibold mb-4">Publications</h2>
-          {author.articles?.length > 0 ? (
-            <div className="space-y-3">
-              {author.articles.map((article) => (
-                <div
-                  key={article.ArticleID}
-                  onClick={() => navigate(`/articles/${article.ArticleID}`)}
-                  className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                >
-                  <h3 className="font-medium mb-1">{article.Title}</h3>
-                  <p className="text-sm text-gray-600">
-                    {new Date(article.SubmissionDate).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No publications yet</p>
+      <div className="glass-card p-6">
+        <h1
+          className="text-xl font-semibold text-white mb-2"
+          style={{ fontFamily: "'Space Grotesk',sans-serif" }}
+        >
+          {data.Name}
+        </h1>
+        <div className="flex flex-wrap gap-4 text-sm text-zinc-500">
+          {data.Affiliation && (
+            <span className="flex items-center gap-1.5">
+              <Building2 size={13} strokeWidth={1.5} />
+              {data.Affiliation}
+            </span>
           )}
+          {data.ORCID && (
+            <span className="font-mono text-xs">{data.ORCID}</span>
+          )}
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/8">
+            {data.UserType}
+          </span>
         </div>
       </div>
+      {data.articles?.length > 0 && (
+        <div>
+          <h2 className="text-xs font-mono text-zinc-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+            <BookOpen size={13} strokeWidth={1.5} /> Articles (
+            {data.articles.length})
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {data.articles.map((a) => (
+              <ArticleCard key={a.ArticleID} article={a} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default AuthorDetail;
+}

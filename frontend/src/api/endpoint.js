@@ -1,22 +1,57 @@
-import api from "./axios";
+import api from "./axios.js";
 
-// Auth
+// ── Auth ─────────────────────────────────────────────────────────────────────
+// POST /api/auth/login    → { username, password }
+// POST /api/auth/signup   → { username, password, email, affiliation?, orcid?, role? }
+// POST /api/auth/logout
+// PUT  /api/auth/change-password/:id → { currentPassword, newPassword }
 export const authAPI = {
-  login: (credentials) => api.post("/auth/login", credentials),
-  signup: (userData) => api.post("/auth/signup", userData),
+  login: (data) => api.post("/auth/login", data),
+  signup: (data) => api.post("/auth/signup", data),
+  logout: () => api.post("/auth/logout"),
+  changePassword: (id, data) => api.put(`/auth/change-password/${id}`, data),
 };
 
-// Articles
+// ── Users ─────────────────────────────────────────────────────────────────────
+// GET    /api/users
+// GET    /api/users/:id
+// PUT    /api/users/:id      → { email, affiliation?, orcid? }
+// PUT    /api/users/:id/password → { password }
+// DELETE /api/users/:id
+// GET    /api/users/:id/articles
+// GET    /api/users/:id/reviews
+export const userAPI = {
+  getAll: () => api.get("/users"),
+  getById: (id) => api.get(`/users/${id}`),
+  update: (id, data) => api.put(`/users/${id}`, data),
+  updatePassword: (id, data) => api.put(`/users/${id}/password`, data),
+  delete: (id) => api.delete(`/users/${id}`),
+  getArticles: (id) => api.get(`/users/${id}/articles`),
+  getReviews: (id) => api.get(`/users/${id}/reviews`),
+};
+
+// ── Articles ──────────────────────────────────────────────────────────────────
+// GET    /api/articles
+// GET    /api/articles/search?q=
+// GET    /api/articles/:id
+// POST   /api/articles
+// PUT    /api/articles/:id
+// DELETE /api/articles/:id
 export const articleAPI = {
   getAll: () => api.get("/articles"),
-  search: (query) => api.get("/articles/search", { params: { q: query } }),
+  search: (q) => api.get("/articles/search", { params: { q } }),
   getById: (id) => api.get(`/articles/${id}`),
   create: (data) => api.post("/articles", data),
   update: (id, data) => api.put(`/articles/${id}`, data),
   delete: (id) => api.delete(`/articles/${id}`),
 };
 
-// Authors
+// ── Authors ───────────────────────────────────────────────────────────────────
+// GET    /api/authors
+// GET    /api/authors/:id
+// POST   /api/authors
+// PUT    /api/authors/:id
+// DELETE /api/authors/:id
 export const authorAPI = {
   getAll: () => api.get("/authors"),
   getById: (id) => api.get(`/authors/${id}`),
@@ -25,7 +60,7 @@ export const authorAPI = {
   delete: (id) => api.delete(`/authors/${id}`),
 };
 
-// Journals
+// ── Journals ──────────────────────────────────────────────────────────────────
 export const journalAPI = {
   getAll: () => api.get("/journals"),
   getById: (id) => api.get(`/journals/${id}`),
@@ -34,7 +69,7 @@ export const journalAPI = {
   delete: (id) => api.delete(`/journals/${id}`),
 };
 
-// Conferences
+// ── Conferences ───────────────────────────────────────────────────────────────
 export const conferenceAPI = {
   getAll: () => api.get("/conferences"),
   getById: (id) => api.get(`/conferences/${id}`),
@@ -43,46 +78,31 @@ export const conferenceAPI = {
   delete: (id) => api.delete(`/conferences/${id}`),
 };
 
-// Reviews
+// ── Reviews ───────────────────────────────────────────────────────────────────
 export const reviewAPI = {
-  create: (data) => api.post("/reviews", data),
   getAll: () => api.get("/reviews"),
-  getByArticle: (articleId) => api.get(`/articles/${articleId}/reviews`),
+  getByArticle: (id) => api.get(`/reviews/article/${id}`),
+  getStatsByArticle: (id) => api.get(`/reviews/article/${id}/stats`),
+  create: (data) => api.post("/reviews", data),
   update: (id, data) => api.put(`/reviews/${id}`, data),
   delete: (id) => api.delete(`/reviews/${id}`),
 };
 
-// Reviewers
-export const reviewerAPI = {
-  getAll: () => api.get("/reviewers"),
-  getById: (id) => api.get(`/reviewers/${id}`),
-  create: (data) => api.post("/reviewers", data),
-  update: (id, data) => api.put(`/reviewers/${id}`, data),
-  delete: (id) => api.delete(`/reviewers/${id}`),
-};
-
-// Users
-export const userAPI = {
-  getAll: () => api.get("/users"),
-  getById: (id) => api.get(`/users/${id}`),
-  update: (id, data) => api.put(`/users/${id}`, data),
-  updatePassword: (id, data) => api.put(`/users/${id}/password`, data),
-  delete: (id) => api.delete(`/users/${id}`),
-};
-
-// Stats
-export const statsAPI = {
-  getStats: () => api.get("/stats"),
-  getHealth: () => api.get("/health"),
-};
-
-// Citations
+// ── Citations ─────────────────────────────────────────────────────────────────
 export const citationAPI = {
-  getByArticle: (articleId) =>
-    api.get(`/citations/articles/${articleId}/citations`),
-  getCitedBy: (articleId) =>
-    api.get(`/citations/articles/${articleId}/cited-by`),
+  getByArticle: (id) => api.get(`/citations/article/${id}`),
+  getCitedBy: (id) => api.get(`/citations/cited-by/${id}`),
+  getNetwork: (id) => api.get(`/citations/network/${id}`),
   getStats: () => api.get("/citations/stats"),
   create: (data) => api.post("/citations", data),
   delete: (id) => api.delete(`/citations/${id}`),
+};
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+export const statsAPI = {
+  getOverview: () => api.get("/stats"),
+  getArticles: () => api.get("/stats/articles"),
+  getAuthors: () => api.get("/stats/authors"),
+  getReviewers: () => api.get("/stats/reviewers"),
+  getKeywords: () => api.get("/stats/keywords"),
 };

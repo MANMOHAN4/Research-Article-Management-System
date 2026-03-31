@@ -1,71 +1,57 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { authorAPI } from "@/api/endpoint";
-import Loader from "@/components/ui/Loader";
-import CardList from "@/components/ui/CardList";
-import { User } from "lucide-react";
+import { useState } from "react";
+import { authorAPI } from "../../api/endpoint.js";
+import AuthorCard from "../../components/cards/AuthorCard.jsx";
+import SearchBar from "../../components/ui/SearchBar.jsx";
+import Loader from "../../components/ui/Loader.jsx";
 
-const AuthorList = () => {
-  const navigate = useNavigate();
-
-  const { data: authors, isLoading } = useQuery({
+export default function AuthorList() {
+  const [q, setQ] = useState("");
+  const { data = [], isLoading } = useQuery({
     queryKey: ["authors"],
-    queryFn: () => authorAPI.getAll().then((res) => res.data),
+    queryFn: () => authorAPI.getAll().then((r) => r.data),
   });
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader size="lg" />
-      </div>
-    );
-  }
+  const filtered = q
+    ? data.filter(
+        (a) =>
+          a.Name?.toLowerCase().includes(q.toLowerCase()) ||
+          a.Affiliation?.toLowerCase().includes(q.toLowerCase()),
+      )
+    : data;
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-2">Authors</h1>
-        <p className="text-white text-opacity-90">Browse research authors</p>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div>
+        <h1
+          className="text-2xl font-semibold text-white tracking-tight"
+          style={{ fontFamily: "'Space Grotesk',sans-serif" }}
+        >
+          Authors
+        </h1>
+        <p className="text-sm text-zinc-500 mt-0.5">{data.length} total</p>
       </div>
-
-      <div className="card">
-        <CardList>
-          {(authors || []).map((author) => (
-            <div
-              key={author.AuthorID}
-              className="card hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/authors/${author.AuthorID}`)}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                  }}
-                >
-                  <User className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-gray-900 truncate">
-                    {author.Name}
-                  </h3>
-                  {author.Affiliation && (
-                    <p className="text-sm text-gray-600 truncate">
-                      {author.Affiliation}
-                    </p>
-                  )}
-                  {author.ORCID && (
-                    <p className="text-xs text-blue-600 mt-1">{author.ORCID}</p>
-                  )}
-                </div>
-              </div>
-            </div>
+      <SearchBar
+        value={q}
+        onChange={setQ}
+        onClear={() => setQ("")}
+        placeholder="Search authors…"
+      />
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <Loader text="Loading authors…" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filtered.map((a) => (
+            <AuthorCard key={a.AuthorID} author={a} />
           ))}
-        </CardList>
-      </div>
+          {filtered.length === 0 && (
+            <p className="col-span-full text-center text-zinc-600 py-12">
+              No authors found.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
-};
-
-export default AuthorList;
+}

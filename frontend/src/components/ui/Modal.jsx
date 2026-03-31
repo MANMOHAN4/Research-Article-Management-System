@@ -1,37 +1,61 @@
 import { X } from "lucide-react";
+import { useEffect } from "react";
 
-const Modal = ({ isOpen, onClose, title, children, size = "md" }) => {
-  if (!isOpen) return null;
+const widths = {
+  sm: "max-w-sm",
+  md: "max-w-lg",
+  lg: "max-w-2xl",
+  xl: "max-w-4xl",
+};
 
-  const sizeClasses = {
-    sm: "max-w-md",
-    md: "max-w-2xl",
-    lg: "max-w-4xl",
-    xl: "max-w-6xl",
-  };
+export default function Modal({ open, onClose, title, children, size = "md" }) {
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    const handler = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handler);
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
-      ></div>
+      />
+      {/* Panel */}
       <div
-        className={`relative bg-white rounded-lg shadow-xl ${sizeClasses[size]} w-full mx-4 my-8`}
+        className={`relative w-full ${widths[size]} glass-card`}
+        style={{ boxShadow: "0 0 60px rgba(0,0,0,0.6)" }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
+          <h2
+            className="text-base font-semibold text-white tracking-tight"
+            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            {title}
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-md
+              text-zinc-500 hover:text-white hover:bg-white/8 transition-all focus-ring"
           >
-            <X className="w-6 h-6" />
+            <X size={15} strokeWidth={2} />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        {/* Body */}
+        <div className="px-5 py-5">{children}</div>
       </div>
     </div>
   );
-};
-
-export default Modal;
+}

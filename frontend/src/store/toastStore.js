@@ -1,16 +1,17 @@
 import { create } from "zustand";
 
-export const useToastStore = create((set, get) => ({
+export const useToastStore = create((set) => ({
   toasts: [],
-  addToast: (toast) => {
-    const id = Date.now();
-    set((state) => ({
-      toasts: [...state.toasts, { ...toast, id }],
-    }));
-    setTimeout(() => get().removeToast(id), 5000);
+
+  addToast: (message, type = "success") => {
+    const id = crypto.randomUUID();
+    set((s) => ({ toasts: [...s.toasts, { id, message, type }] }));
+    setTimeout(
+      () => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+      3500,
+    );
   },
+
   removeToast: (id) =>
-    set((state) => ({
-      toasts: state.toasts.filter((t) => t.id !== id),
-    })),
+    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }));

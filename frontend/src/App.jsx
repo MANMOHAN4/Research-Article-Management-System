@@ -1,86 +1,70 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useAuthStore } from "./store/authStore";
+import { useAuthStore } from "./store/authStore.js";
 
-// Layouts
-import AuthLayout from "./layouts/AuthLayout";
-import DashboardLayout from "./layouts/DashboardLayout";
+import AuthLayout from "./layouts/AuthLayout.jsx";
+import DashboardLayout from "./layouts/DashboardLayout.jsx";
+import Toast from "./components/ui/Toast.jsx";
 
-// Auth pages
-import Login from "./pages/Auth/Login";
-import Signup from "./pages/Auth/Signup";
+import Login from "./pages/Auth/Login.jsx";
+import Signup from "./pages/Auth/Signup.jsx";
 
-// Protected pages
-import Dashboard from "./pages/Dashboard/Dashboard";
-import ArticleList from "./pages/Articles/ArticleList";
-import ArticleDetail from "./pages/Articles/ArticleDetail";
-import ArticleForm from "./pages/Articles/ArticleForm";
-import AuthorList from "./pages/Authors/AuthorList";
-import AuthorDetail from "./pages/Authors/AuthorDetail";
-import JournalList from "./pages/Journals/JournalList";
-import ConferenceList from "./pages/Conferences/ConferenceList";
-import UserList from "./pages/Users/UserList";
+import Dashboard from "./pages/Dashboard/Dashboard.jsx";
+import ArticleList from "./pages/Articles/ArticleList.jsx";
+import ArticleDetail from "./pages/Articles/ArticleDetail.jsx";
+import ArticleForm from "./pages/Articles/ArticleForm.jsx";
+import AuthorList from "./pages/Authors/AuthorList.jsx";
+import AuthorDetail from "./pages/Authors/AuthorDetail.jsx";
+import JournalList from "./pages/Journals/JournalList.jsx";
+import ConferenceList from "./pages/Conferences/ConferenceList.jsx";
+import UserList from "./pages/Users/UserList.jsx";
 
-// Guards
-const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
-
-const AdminRoute = ({ children }) => {
+/* Guards unauthenticated users — checks Zustand persisted store */
+function PrivateRoute({ children }) {
   const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === "Admin";
-  return isAdmin ? children : <Navigate to="/dashboard" replace />;
-};
+  return user ? children : <Navigate to="/login" replace />;
+}
 
 export default function App() {
   return (
-    <Routes>
-      {/* Public */}
-      <Route element={<AuthLayout />}>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-      </Route>
+    <>
+      {/* Global toast overlay — sits above everything */}
+      <Toast />
 
-      {/* Protected */}
-      <Route
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/dashboard" element={<Dashboard />} />
+      <Routes>
+        {/* ── Public: Auth pages ─────────────────────── */}
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+        </Route>
 
-        {/* Articles */}
-        <Route path="/articles" element={<ArticleList />} />
-        <Route path="/articles/new" element={<ArticleForm />} />
-        <Route path="/articles/:id" element={<ArticleDetail />} />
-        <Route path="/articles/:id/edit" element={<ArticleForm />} />
-
-        {/* Authors */}
-        <Route path="/authors" element={<AuthorList />} />
-        <Route path="/authors/:id" element={<AuthorDetail />} />
-
-        {/* Journals */}
-        <Route path="/journals" element={<JournalList />} />
-
-        {/* Conferences */}
-        <Route path="/conferences" element={<ConferenceList />} />
-
-        {/* Users (Admin only) */}
+        {/* ── Private: Dashboard ─────────────────────── */}
         <Route
-          path="/users"
+          path="/"
           element={
-            <AdminRoute>
-              <UserList />
-            </AdminRoute>
+            <PrivateRoute>
+              <DashboardLayout />
+            </PrivateRoute>
           }
-        />
-      </Route>
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
 
-      {/* Defaults */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+          <Route path="articles" element={<ArticleList />} />
+          <Route path="articles/new" element={<ArticleForm />} />
+          <Route path="articles/:id" element={<ArticleDetail />} />
+          <Route path="articles/:id/edit" element={<ArticleForm />} />
+
+          <Route path="authors" element={<AuthorList />} />
+          <Route path="authors/:id" element={<AuthorDetail />} />
+
+          <Route path="journals" element={<JournalList />} />
+          <Route path="conferences" element={<ConferenceList />} />
+          <Route path="users" element={<UserList />} />
+        </Route>
+
+        {/* ── Fallback ────────────────────────────────── */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </>
   );
 }

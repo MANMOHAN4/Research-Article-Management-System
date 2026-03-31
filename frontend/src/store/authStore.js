@@ -4,12 +4,20 @@ import { persist } from "zustand/middleware";
 export const useAuthStore = create(
   persist(
     (set) => ({
+      // Matches backend login/signup response shape exactly:
+      // { userId, username, email, affiliation, orcid, role,
+      //   hasAuthorProfile, hasReviewerProfile, authorId, reviewerId }
       user: null,
-      isAuthenticated: false,
-      login: (userData) => set({ user: userData, isAuthenticated: true }),
-      logout: () => set({ user: null, isAuthenticated: false }),
-      updateUser: (userData) => set({ user: userData }),
+
+      setAuth: (userData) => set({ user: userData }),
+      logout: () => set({ user: null }),
+
+      // Convenience updater after profile edits
+      updateUser: (patch) => set((s) => ({ user: { ...s.user, ...patch } })),
     }),
-    { name: "auth-storage" }
-  )
+    {
+      name: "ram-auth", // localStorage key
+      partialize: (s) => ({ user: s.user }), // only persist user, not actions
+    },
+  ),
 );

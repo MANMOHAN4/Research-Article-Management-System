@@ -1,353 +1,316 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
-import { articleAPI, journalAPI, conferenceAPI } from "@/api/endpoint";
-import { useToastStore } from "@/store/toastStore";
-import Loader from "@/components/ui/Loader";
-import { Plus, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { articleAPI, journalAPI, conferenceAPI } from "../../api/endpoint.js";
+import { useToastStore } from "../../store/toastStore.js";
+import { ArrowLeft, Plus, X } from "lucide-react";
+import Loader from "../../components/ui/Loader.jsx";
 
-const ArticleForm = () => {
+const STATUSES = [
+  "Submitted",
+  "Under Review",
+  "Accepted",
+  "Published",
+  "Rejected",
+];
+const PUB_TYPES = ["Journal", "Conference", "Unpublished"];
+
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="block text-xs font-mono text-zinc-500 mb-1.5 tracking-wide uppercase">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls = `w-full h-11 px-3.5 rounded-lg text-sm text-zinc-200 placeholder:text-zinc-600
+  bg-[rgba(26,26,36,0.6)] border border-white/8 transition-all duration-200
+  focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20`;
+
+export default function ArticleForm() {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const isEdit = !!id;
-  const addToast = useToastStore((state) => state.addToast);
-  const queryClient = useQueryClient();
+  const isEdit = Boolean(id);
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const addToast = useToastStore((s) => s.addToast);
 
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     title: "",
     abstract: "",
     doi: "",
-    keywords: "",
-    submissionDate: new Date().toISOString().split("T")[0],
+    submissionDate: "",
     status: "Submitted",
+    publicationType: "Unpublished",
     journalId: "",
     conferenceId: "",
-    authors: [{ name: "", affiliation: "", orcid: "" }],
+    keywords: [],
+    authors: [],
   });
+  const [kwInput, setKwInput] = useState("");
 
-  const { data: journals } = useQuery({
+  const { data: journals = [] } = useQuery({
     queryKey: ["journals"],
-    queryFn: () => journalAPI.getAll().then((res) => res.data),
+    queryFn: () => journalAPI.getAll().then((r) => r.data),
   });
-
-  const { data: conferences } = useQuery({
+  const { data: conferences = [] } = useQuery({
     queryKey: ["conferences"],
-    queryFn: () => conferenceAPI.getAll().then((res) => res.data),
+    queryFn: () => conferenceAPI.getAll().then((r) => r.data),
   });
 
-  const { data: article, isLoading } = useQuery({
+  const { data: existing, isLoading: loadingExisting } = useQuery({
     queryKey: ["article", id],
-    queryFn: () => articleAPI.getById(id).then((res) => res.data),
+    queryFn: () => articleAPI.getById(id).then((r) => r.data),
     enabled: isEdit,
   });
 
   useEffect(() => {
-    if (article && isEdit) {
-      setFormData({
-        title: article.Title || "",
-        abstract: article.Abstract || "",
-        doi: article.DOI || "",
-        keywords: article.Keywords || "",
-        submissionDate: article.SubmissionDate?.split("T")[0] || "",
-        status: article.Status || "Submitted",
-        journalId: article.JournalID || "",
-        conferenceId: article.ConferenceID || "",
-        authors: article.authors?.map((a) => ({
-          name: a.Name,
-          affiliation: a.Affiliation || "",
-          orcid: a.ORCID || "",
-        })) || [{ name: "", affiliation: "", orcid: "" }],
+    if (existing) {
+      setForm({
+        title: existing.Title || "",
+        abstract: existing.Abstract || "",
+        doi: existing.DOI || "",
+        submissionDate: existing.SubmissionDate?.split("T")[0] || "",
+        status: existing.Status || "Submitted",
+        publicationType: existing.PublicationType || "Unpublished",
+        journalId: existing.JournalID || "",
+        conferenceId: existing.ConferenceID || "",
+        keywords: existing.keywords?.map((k) => k.KeywordText) || [],
+        authors:
+          existing.authors?.map((a) => ({ name: a.Name, userId: a.UserID })) ||
+          [],
       });
     }
-  }, [article, isEdit]);
+  }, [existing]);
 
   const mutation = useMutation({
     mutationFn: (data) =>
       isEdit ? articleAPI.update(id, data) : articleAPI.create(data),
-    onSuccess: () => {
-      addToast({
-        type: "success",
-        message: `Article ${isEdit ? "updated" : "created"} successfully`,
-      });
-      queryClient.invalidateQueries(["articles"]);
-      navigate("/articles");
+    onSuccess: (res) => {
+      qc.invalidateQueries(["articles"]);
+      addToast(isEdit ? "Article updated" : "Article created", "success");
+      nav(`/articles/${res.data.article?.ArticleID || id}`);
     },
-    onError: (error) => {
-      addToast({
-        type: "error",
-        message: error.response?.data?.error || "Operation failed",
-      });
-    },
+    onError: (err) =>
+      addToast(err.response?.data?.error || "Save failed", "error"),
   });
+
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const addKw = () => {
+    const t = kwInput.trim();
+    if (t && !form.keywords.includes(t)) {
+      set("keywords", [...form.keywords, t]);
+      setKwInput("");
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    mutation.mutate(formData);
-  };
-
-  const addAuthor = () => {
-    setFormData({
-      ...formData,
-      authors: [...formData.authors, { name: "", affiliation: "", orcid: "" }],
+    mutation.mutate({
+      ...form,
+      journalId: form.publicationType === "Journal" ? form.journalId : null,
+      conferenceId:
+        form.publicationType === "Conference" ? form.conferenceId : null,
+      authors: form.authors.length
+        ? form.authors
+        : [{ name: "Unknown Author" }],
     });
   };
 
-  const removeAuthor = (index) => {
-    setFormData({
-      ...formData,
-      authors: formData.authors.filter((_, i) => i !== index),
-    });
-  };
-
-  const updateAuthor = (index, field, value) => {
-    const newAuthors = [...formData.authors];
-    newAuthors[index][field] = value;
-    setFormData({ ...formData, authors: newAuthors });
-  };
-
-  if (isEdit && isLoading) {
+  if (isEdit && loadingExisting)
     return (
-      <div className="flex justify-center py-12">
-        <Loader size="lg" />
+      <div className="flex justify-center py-20">
+        <Loader />
       </div>
     );
-  }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">
-        {isEdit ? "Edit Article" : "New Article"}
-      </h1>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <button
+        onClick={() => nav(-1)}
+        className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+      >
+        <ArrowLeft size={16} strokeWidth={1.5} /> Back
+      </button>
 
-      <form onSubmit={handleSubmit} className="card space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Title *
-          </label>
+      <div>
+        <h1
+          className="text-2xl font-semibold text-white tracking-tight"
+          style={{ fontFamily: "'Space Grotesk',sans-serif" }}
+        >
+          {isEdit ? "Edit Article" : "New Article"}
+        </h1>
+      </div>
+
+      <form onSubmit={handleSubmit} className="glass-card p-6 space-y-5">
+        <Field label="Title *">
           <input
-            type="text"
-            value={formData.title}
-            onChange={(e) =>
-              setFormData({ ...formData, title: e.target.value })
-            }
-            className="input"
+            value={form.title}
+            onChange={(e) => set("title", e.target.value)}
+            placeholder="Article title"
             required
+            className={inputCls}
           />
-        </div>
+        </Field>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Abstract *
-          </label>
+        <Field label="Abstract">
           <textarea
-            value={formData.abstract}
-            onChange={(e) =>
-              setFormData({ ...formData, abstract: e.target.value })
-            }
-            className="input min-h-32"
-            required
+            value={form.abstract}
+            onChange={(e) => set("abstract", e.target.value)}
+            placeholder="Brief abstract…"
+            rows={4}
+            className={`${inputCls} h-auto py-3 resize-none`}
           />
-        </div>
+        </Field>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              DOI
-            </label>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="DOI">
             <input
-              type="text"
-              value={formData.doi}
-              onChange={(e) =>
-                setFormData({ ...formData, doi: e.target.value })
-              }
-              className="input"
+              value={form.doi}
+              onChange={(e) => set("doi", e.target.value)}
+              placeholder="10.xxxx/xxxx"
+              className={inputCls}
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Keywords
-            </label>
-            <input
-              type="text"
-              value={formData.keywords}
-              onChange={(e) =>
-                setFormData({ ...formData, keywords: e.target.value })
-              }
-              className="input"
-              placeholder="Comma separated"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Submission Date
-            </label>
+          </Field>
+          <Field label="Submission Date">
             <input
               type="date"
-              value={formData.submissionDate}
-              onChange={(e) =>
-                setFormData({ ...formData, submissionDate: e.target.value })
-              }
-              className="input"
+              value={form.submissionDate}
+              onChange={(e) => set("submissionDate", e.target.value)}
+              className={inputCls}
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              value={formData.status}
-              onChange={(e) =>
-                setFormData({ ...formData, status: e.target.value })
-              }
-              className="input"
-            >
-              <option value="Submitted">Submitted</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Accepted">Accepted</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Published">Published</option>
-            </select>
-          </div>
+          </Field>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Journal
-            </label>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Status">
             <select
-              value={formData.journalId}
-              onChange={(e) =>
-                setFormData({ ...formData, journalId: e.target.value })
-              }
-              className="input"
+              value={form.status}
+              onChange={(e) => set("status", e.target.value)}
+              className={inputCls}
             >
-              <option value="">Select Journal</option>
-              {journals?.map((j) => (
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Publication Type">
+            <select
+              value={form.publicationType}
+              onChange={(e) => set("publicationType", e.target.value)}
+              className={inputCls}
+            >
+              {PUB_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        {form.publicationType === "Journal" && (
+          <Field label="Journal">
+            <select
+              value={form.journalId}
+              onChange={(e) => set("journalId", e.target.value)}
+              className={inputCls}
+              required
+            >
+              <option value="">Select journal…</option>
+              {journals.map((j) => (
                 <option key={j.JournalID} value={j.JournalID}>
                   {j.Name}
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Conference
-            </label>
+          </Field>
+        )}
+
+        {form.publicationType === "Conference" && (
+          <Field label="Conference">
             <select
-              value={formData.conferenceId}
-              onChange={(e) =>
-                setFormData({ ...formData, conferenceId: e.target.value })
-              }
-              className="input"
+              value={form.conferenceId}
+              onChange={(e) => set("conferenceId", e.target.value)}
+              className={inputCls}
+              required
             >
-              <option value="">Select Conference</option>
-              {conferences?.map((c) => (
+              <option value="">Select conference…</option>
+              {conferences.map((c) => (
                 <option key={c.ConferenceID} value={c.ConferenceID}>
                   {c.Name}
                 </option>
               ))}
             </select>
-          </div>
-        </div>
+          </Field>
+        )}
 
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <label className="block text-sm font-medium text-gray-700">
-              Authors *
-            </label>
+        <Field label="Keywords">
+          <div className="flex gap-2 mb-2">
+            <input
+              value={kwInput}
+              onChange={(e) => setKwInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addKw();
+                }
+              }}
+              placeholder="Add keyword…"
+              className={`${inputCls} flex-1`}
+            />
             <button
               type="button"
-              onClick={addAuthor}
-              className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              onClick={addKw}
+              className="h-11 px-3 rounded-lg border border-white/10 text-zinc-400 hover:border-white/20 hover:text-white transition-all focus-ring"
             >
-              <Plus className="w-4 h-4" />
-              Add Author
+              <Plus size={16} strokeWidth={1.5} />
             </button>
           </div>
-          <div className="space-y-4">
-            {formData.authors.map((author, index) => (
-              <div
-                key={index}
-                className="border border-gray-200 rounded-lg p-4"
+          <div className="flex flex-wrap gap-1.5">
+            {form.keywords.map((k) => (
+              <span
+                key={k}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs
+                bg-amber-500/10 border border-amber-500/15 text-amber-400/80"
               >
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">
-                    Author {index + 1}
-                  </span>
-                  {formData.authors.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeAuthor(index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input
-                    type="text"
-                    value={author.name}
-                    onChange={(e) =>
-                      updateAuthor(index, "name", e.target.value)
-                    }
-                    placeholder="Name *"
-                    className="input"
-                    required
-                  />
-                  <input
-                    type="text"
-                    value={author.affiliation}
-                    onChange={(e) =>
-                      updateAuthor(index, "affiliation", e.target.value)
-                    }
-                    placeholder="Affiliation"
-                    className="input"
-                  />
-                  <input
-                    type="text"
-                    value={author.orcid}
-                    onChange={(e) =>
-                      updateAuthor(index, "orcid", e.target.value)
-                    }
-                    placeholder="ORCID"
-                    className="input"
-                  />
-                </div>
-              </div>
+                {k}
+                <button
+                  type="button"
+                  onClick={() =>
+                    set(
+                      "keywords",
+                      form.keywords.filter((x) => x !== k),
+                    )
+                  }
+                  className="hover:text-white transition-colors"
+                >
+                  <X size={11} />
+                </button>
+              </span>
             ))}
           </div>
-        </div>
+        </Field>
 
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            className="btn btn-primary"
-          >
-            {mutation.isPending ? (
-              <Loader size="sm" />
-            ) : isEdit ? (
-              "Update Article"
-            ) : (
-              "Create Article"
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/articles")}
-            className="btn btn-secondary"
-          >
-            Cancel
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={mutation.isPending}
+          className="w-full h-11 rounded-lg text-sm font-medium text-[#0A0A0F]
+            bg-amber-500 hover:brightness-110 active:scale-[0.98] transition-all duration-200
+            disabled:opacity-50 focus-ring"
+          style={{ boxShadow: "0 0 20px rgba(245,158,11,0.25)" }}
+        >
+          {mutation.isPending
+            ? "Saving…"
+            : isEdit
+              ? "Save Changes"
+              : "Create Article"}
+        </button>
       </form>
     </div>
   );
-};
-
-export default ArticleForm;
+}

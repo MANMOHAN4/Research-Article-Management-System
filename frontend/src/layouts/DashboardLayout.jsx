@@ -1,171 +1,228 @@
+import { Outlet, NavLink } from "react-router-dom";
 import { useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
 import {
+  LayoutDashboard,
   FileText,
+  UserCircle,
+  BookMarked,
+  CalendarDays,
   Users,
-  BookOpen,
-  Calendar,
-  Settings,
   LogOut,
   Menu,
   X,
-  BarChart3,
+  ChevronRight,
 } from "lucide-react";
-import { useAuthStore } from "@/store/authStore";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "../hooks/useAuth.js";
 
-const DashboardLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const location = useLocation();
-  const { handleLogout } = useAuth();
-  const user = useAuthStore((s) => s.user);
+const NAV = [
+  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/articles", icon: FileText, label: "Articles" },
+  { to: "/authors", icon: UserCircle, label: "Authors" },
+  { to: "/journals", icon: BookMarked, label: "Journals" },
+  { to: "/conferences", icon: CalendarDays, label: "Conferences" },
+  { to: "/users", icon: Users, label: "Users" },
+];
 
-  const isActive = (path) => location.pathname.startsWith(path);
-
-  const coreNav = [
-    { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
-    { name: "Articles", href: "/articles", icon: FileText },
-    { name: "Authors", href: "/authors", icon: Users },
-    { name: "Journals", href: "/journals", icon: BookOpen },
-    { name: "Conferences", href: "/conferences", icon: Calendar },
-  ];
-
-  const adminNav =
-    user?.role === "Admin"
-      ? [{ name: "Users", href: "/users", icon: Settings }]
-      : [];
-
-  const navigation = [...coreNav, ...adminNav];
+export default function DashboardLayout() {
+  const { user, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen">
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } w-64`}
-        style={{
-          background: "rgba(255, 255, 255, 0.95)",
-          backdropFilter: "blur(10px)",
-          borderRight: "1px solid rgba(255, 255, 255, 0.3)",
-          boxShadow: "4px 0 24px rgba(0, 0, 0, 0.08)",
-        }}
+    <div className="min-h-screen flex" style={{ background: "#0A0A0F" }}>
+      {/* ── Global ambient orb (fixed, behind everything) ── */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+        aria-hidden="true"
       >
-        <div className="h-full flex flex-col">
-          <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100">
-            <h1 className="text-2xl font-bold" style={{ color: "#4f46e5" }}>
-              Research Hub
-            </h1>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+        <div
+          className="absolute top-[-10%] left-[30%]
+            w-[600px] h-[600px] rounded-full"
+          style={{
+            background: "#F59E0B",
+            opacity: 0.025,
+            filter: "blur(150px)",
+          }}
+        />
+      </div>
 
-          <nav className="flex-1 overflow-y-auto py-4">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center gap-3 px-6 py-3 mx-2 my-1 rounded-lg text-sm font-medium transition-all ${
-                    active
-                      ? "text-white shadow-lg"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                  style={
-                    active
-                      ? {
-                          background:
-                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                        }
-                      : {}
-                  }
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="p-4 border-t border-gray-100">
+      {/* ══════════════════════════════════
+          SIDEBAR
+      ══════════════════════════════════ */}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-40 w-56 flex flex-col
+          bg-[#12121A] border-r border-white/[0.06]
+          transition-transform duration-300 ease-out
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          md:translate-x-0
+        `}
+      >
+        {/* Logo */}
+        <div className="h-14 flex items-center px-4 border-b border-white/[0.06] shrink-0">
+          <div className="flex items-center gap-2.5">
             <div
-              className="rounded-xl p-4 mb-3"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)",
-              }}
+              className="h-7 w-7 rounded-lg flex items-center justify-center
+                bg-amber-500/15 border border-amber-500/20 shrink-0"
+              style={{ boxShadow: "0 0 14px rgba(245,158,11,0.12)" }}
             >
-              <div className="flex items-center gap-3 mb-2">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  }}
-                >
-                  {user?.username?.[0]?.toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
-                    {user?.username}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {user?.email}
-                  </p>
-                </div>
-              </div>
+              <span
+                className="text-amber-400 font-bold text-xs"
+                style={{ fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                R
+              </span>
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
+            <span
+              className="font-semibold text-sm text-white tracking-tight"
+              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
+              Research<span className="text-amber-500">AM</span>
+            </span>
           </div>
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+          {NAV.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }) => `
+                flex items-center gap-3 px-3 py-2.5 rounded-lg
+                text-sm transition-all duration-200 group
+                ${
+                  isActive
+                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/15"
+                    : "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] border border-transparent"
+                }
+              `}
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon
+                    size={15}
+                    strokeWidth={isActive ? 2 : 1.5}
+                    className={
+                      isActive
+                        ? "text-amber-500"
+                        : "text-zinc-500 group-hover:text-zinc-300"
+                    }
+                  />
+                  <span className="flex-1">{label}</span>
+                  {isActive && (
+                    <ChevronRight
+                      size={12}
+                      strokeWidth={2}
+                      className="text-amber-500/60"
+                    />
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* User footer */}
+        <div className="shrink-0 p-2 border-t border-white/[0.06]">
+          {/* User identity */}
+          <div className="flex items-center gap-2.5 px-3 py-2 mb-1 rounded-lg">
+            <div
+              className="h-7 w-7 rounded-full bg-[#0A0A0F] border border-white/10
+                flex items-center justify-center shrink-0"
+            >
+              <span className="text-[11px] font-mono text-zinc-400 uppercase">
+                {user?.username?.charAt(0) ?? "U"}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-zinc-300 truncate">
+                {user?.username}
+              </p>
+              <p className="text-[10px] text-zinc-600 font-mono truncate">
+                {user?.role}
+              </p>
+            </div>
+          </div>
+
+          {/* Sign out */}
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg
+              text-sm text-zinc-500 hover:text-red-400 hover:bg-red-500/8
+              transition-all duration-200 focus-ring"
+          >
+            <LogOut size={14} strokeWidth={1.5} />
+            Sign out
+          </button>
         </div>
       </aside>
 
-      {/* Main */}
-      <div className={`${sidebarOpen ? "lg:ml-64" : ""} transition-all`}>
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* ══════════════════════════════════
+          MAIN CONTENT AREA
+      ══════════════════════════════════ */}
+      <div className="flex-1 flex flex-col min-h-screen md:ml-56 relative z-10">
+        {/* Top bar */}
         <header
-          className="h-16 flex items-center px-6 sticky top-0 z-30"
-          style={{
-            background: "rgba(255, 255, 255, 0.8)",
-            backdropFilter: "blur(10px)",
-            borderBottom: "1px solid rgba(255, 255, 255, 0.3)",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)",
-          }}
+          className="h-14 shrink-0 flex items-center gap-3 px-4 md:px-6
+            border-b border-white/[0.06] sticky top-0 z-20
+            bg-[#12121A]/80 backdrop-blur-md"
         >
+          {/* Mobile menu toggle */}
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            onClick={() => setSidebarOpen((o) => !o)}
+            className="md:hidden h-8 w-8 flex items-center justify-center
+              rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5
+              transition-all focus-ring"
+            aria-label="Toggle sidebar"
           >
-            <Menu className="w-6 h-6 text-gray-700" />
+            {sidebarOpen ? (
+              <X size={18} strokeWidth={1.5} />
+            ) : (
+              <Menu size={18} strokeWidth={1.5} />
+            )}
           </button>
-          <div className="ml-auto flex items-center gap-4">
+
+          <div className="flex-1" />
+
+          {/* Connection indicator */}
+          <div className="flex items-center gap-2">
             <span
-              className="px-3 py-1 rounded-full text-sm font-semibold"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)",
-                color: "#5b21b6",
-              }}
+              className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+              style={{ boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}
+            />
+            <span
+              className="text-xs text-zinc-600 hidden sm:block"
+              style={{ fontFamily: "'JetBrains Mono', monospace" }}
             >
-              {user?.role}
+              connected
             </span>
           </div>
+
+          {/* Role badge */}
+          {user?.role && (
+            <span
+              className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-xs font-mono
+                bg-amber-500/10 text-amber-400/70 border border-amber-500/15"
+            >
+              {user.role}
+            </span>
+          )}
         </header>
 
-        <main className="p-6">
+        {/* Page outlet */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 page-enter">
           <Outlet />
         </main>
       </div>
     </div>
   );
-};
-
-export default DashboardLayout;
+}

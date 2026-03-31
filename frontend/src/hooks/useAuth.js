@@ -1,49 +1,62 @@
+import { useAuthStore } from "../store/authStore.js";
+import { authAPI } from "../api/endpoint.js";
+import { useToastStore } from "../store/toastStore.js";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "@/store/authStore";
-import { authAPI } from "@/api/endpoint";
-import { useToastStore } from "@/store/toastStore";
 
-export const useAuth = () => {
-  const navigate = useNavigate();
-  const { login, logout, user, isAuthenticated } = useAuthStore();
+export function useAuth() {
+  const { user, setAuth, logout: storeLogout, updateUser } = useAuthStore();
   const addToast = useToastStore((s) => s.addToast);
+  const navigate = useNavigate();
 
-  const handleLogin = async (credentials) => {
-    try {
-      const res = await authAPI.login(credentials);
-      // Expecting backend to return { username, email, role, token? }
-      login(res.data);
-      addToast({ type: "success", message: "Login successful!" });
-      navigate("/dashboard");
-      return { success: true };
-    } catch (error) {
-      const message = error?.response?.data?.error || "Login failed";
-      addToast({ type: "error", message });
-      return { success: false, error: message };
-    }
+  const login = async ({ username, password }) => {
+    // Backend expects: { username, password }
+    // Backend returns: { userId, username, email, affiliation, orcid, role,
+    //                    hasAuthorProfile, hasReviewerProfile, authorId, reviewerId, message }
+    const { data } = await authAPI.login({ username, password });
+    setAuth(data);
+    addToast(`Welcome back, ${data.username}!`, "success");
+    navigate("/dashboard");
   };
 
-  const handleSignup = async (payload) => {
-    try {
-      await authAPI.signup(payload);
-      addToast({
-        type: "success",
-        message: "Registration successful! Please login.",
-      });
-      navigate("/login");
-      return { success: true };
-    } catch (error) {
-      const message = error?.response?.data?.error || "Registration failed";
-      addToast({ type: "error", message });
-      return { success: false, error: message };
-    }
+  const signup = async ({
+    username,
+    password,
+    email,
+    affiliation,
+    orcid,
+    role,
+  }) => {
+    // Backend expects: { username, password, email, affiliation?, orcid?, role? }
+    // Backend returns: same shape as login + message: "User registered successfully"
+    const { data } = await authAPI.signup({
+      username,
+      password,
+      email,
+      affiliation: affiliation || null,
+      orcid: orcid || null,
+      role: role || "Author",
+    });
+    setAuth(data);
+    addToast("Account created successfully!", "success");
+    navigate("/dashboard");
   };
 
-  const handleLogout = () => {
-    logout();
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (_) {
+      /* server-side session cleanup */
+    }
+    storeLogout();
+    addToast("Signed out.", "info");
     navigate("/login");
-    addToast({ type: "info", message: "Logged out successfully" });
   };
 
-  return { handleLogin, handleSignup, handleLogout, user, isAuthenticated };
-};
+  const changePassword = async (currentPassword, newPassword) => {
+    if (!user?.userId) throw new Error("Not authenticated");
+    await authAPI.changePassword(user.userId, { currentPassword, newPassword });
+    addToast("Password changed successfully.", "success");
+  };
+
+  return { user, login, signup, logout, changePassword, updateUser };
+}

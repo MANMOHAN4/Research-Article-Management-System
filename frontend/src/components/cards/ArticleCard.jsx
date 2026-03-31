@@ -1,76 +1,100 @@
+import { BookOpen, Calendar, Tag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, FileText } from "lucide-react";
 
-const ArticleCard = ({ article }) => {
-  const navigate = useNavigate();
-  const date = article.SubmissionDate
-    ? new Date(article.SubmissionDate).toLocaleDateString()
-    : "—";
-  const statusColor =
-    article.Status === "Published"
-      ? "bg-green-100 text-green-700"
-      : article.Status === "Rejected"
-        ? "bg-red-100 text-red-700"
-        : "bg-blue-100 text-blue-700";
+const statusStyle = {
+  Published: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
+  Accepted: "bg-blue-500/15   text-blue-400   border-blue-500/20",
+  "Under Review": "bg-amber-500/15  text-amber-400  border-amber-500/20",
+  Submitted: "bg-zinc-500/15   text-zinc-400   border-zinc-500/20",
+  Rejected: "bg-red-500/15    text-red-400    border-red-500/20",
+};
+
+export default function ArticleCard({ article }) {
+  const nav = useNavigate();
+
+  // Backend returns Keywords as comma-separated string
+  const keywords = article.Keywords
+    ? article.Keywords.split(",")
+        .map((k) => k.trim())
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
 
   return (
     <div
-      className="card hover:shadow-md transition-shadow cursor-pointer"
-      onClick={() => navigate(`/articles/${article.ArticleID}`)}
+      onClick={() => nav(`/articles/${article.ArticleID}`)}
+      className="glass-card p-5 cursor-pointer hover:scale-[1.02]
+        hover:border-white/15 group transition-all duration-300"
     >
-      <div className="flex items-start gap-3">
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center"
-          style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            color: "#fff",
-          }}
-        >
-          <FileText className="w-5 h-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 truncate">
-            {article.Title}
-          </h3>
-          <p className="text-sm text-gray-600 truncate">
-            {article.Authors ||
-              article.authors?.map((a) => a.Name).join(", ") ||
-              "—"}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Calendar className="w-4 h-4" />
-          <span>{date}</span>
-        </div>
+      {/* Top row */}
+      <div className="flex items-start justify-between gap-2 mb-3">
         <span
-          className={`px-2 py-1 rounded text-xs font-medium ${statusColor}`}
+          className={`inline-flex items-center px-2 py-0.5 rounded-full
+            text-xs font-mono border shrink-0
+            ${statusStyle[article.Status] || statusStyle.Submitted}`}
         >
-          {article.Status || "Submitted"}
+          {article.Status}
+        </span>
+        <span className="text-xs text-zinc-600 font-mono shrink-0">
+          {article.PublicationType}
         </span>
       </div>
 
-      {(article.Keywords || article.keywords) && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(article.Keywords
-            ? article.Keywords.split(",")
-            : article.keywords.split(",")
-          )
-            .slice(0, 3)
-            .map((k, i) => (
-              <span
-                key={i}
-                className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
-              >
-                {k.trim()}
-              </span>
-            ))}
+      {/* Title */}
+      <h3
+        className="text-sm font-semibold text-zinc-100 leading-snug mb-2 line-clamp-2
+          group-hover:text-amber-400 transition-colors duration-200"
+        style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+      >
+        {article.Title}
+      </h3>
+
+      {/* Authors — backend returns as "Alice, Bob" string */}
+      {article.Authors && (
+        <p className="text-xs text-zinc-500 mb-3 line-clamp-1">
+          {article.Authors}
+        </p>
+      )}
+
+      {/* Keywords */}
+      {keywords.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {keywords.map((k) => (
+            <span
+              key={k}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md
+                text-xs bg-amber-500/8 text-amber-400/70 border border-amber-500/10"
+            >
+              <Tag size={9} strokeWidth={2} />
+              {k}
+            </span>
+          ))}
         </div>
       )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-3 border-t border-white/5">
+        <div className="flex items-center gap-1.5 text-xs text-zinc-600">
+          <Calendar size={11} strokeWidth={1.5} />
+          {article.SubmissionDate
+            ? new Date(article.SubmissionDate).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "—"}
+        </div>
+        {article.JournalName && (
+          <div className="flex items-center gap-1.5 text-xs text-zinc-500 max-w-[140px] min-w-0">
+            <BookOpen
+              size={11}
+              strokeWidth={1.5}
+              className="text-amber-500/50 shrink-0"
+            />
+            <span className="truncate">{article.JournalName}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
-};
-
-export default ArticleCard;
+}

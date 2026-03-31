@@ -1,78 +1,92 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, Navigate } from "react-router-dom";
+import { useAuthStore } from "../store/authStore.js";
 
-const AuthLayout = () => {
+export default function AuthLayout() {
+  const user = useAuthStore((s) => s.user);
+
+  // Already logged in → skip auth pages
+  if (user) return <Navigate to="/dashboard" replace />;
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background circles */}
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ background: "#0A0A0F" }}
+    >
+      {/* ── Ambient background orbs ── */}
       <div
-        className="absolute top-20 left-10 w-72 h-72 rounded-full opacity-20"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)",
-          animation: "float 6s ease-in-out infinite",
-        }}
-      ></div>
-      <div
-        className="absolute bottom-20 right-10 w-96 h-96 rounded-full opacity-20"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)",
-          animation: "float 8s ease-in-out infinite",
-          animationDelay: "2s",
-        }}
-      ></div>
+        className="pointer-events-none fixed inset-0 overflow-hidden"
+        aria-hidden="true"
+      >
+        {/* Top-center warm glow */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 -top-32
+            w-[560px] h-[560px] rounded-full"
+          style={{
+            background: "#F59E0B",
+            opacity: 0.04,
+            filter: "blur(120px)",
+          }}
+        />
+        {/* Bottom-right subtle glow */}
+        <div
+          className="absolute -bottom-24 -right-24
+            w-[360px] h-[360px] rounded-full"
+          style={{
+            background: "#F59E0B",
+            opacity: 0.025,
+            filter: "blur(100px)",
+          }}
+        />
+      </div>
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Logo and Title Section */}
+      {/* ── Subtle dot-grid background ── */}
+      <div
+        className="pointer-events-none fixed inset-0"
+        aria-hidden="true"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }}
+      />
+
+      {/* ── Content ── */}
+      <div className="relative z-10 w-full max-w-md">
+        {/* Logo mark */}
         <div className="text-center mb-8">
-          {/* Logo/Icon with glassmorphism */}
-          <div
-            className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-6 mx-auto"
-            style={{
-              background: "rgba(255, 255, 255, 0.25)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-              border: "2px solid rgba(255, 255, 255, 0.3)",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
-              animation: "float 3s ease-in-out infinite",
-            }}
-          >
-            <svg
-              className="w-10 h-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="inline-flex flex-col items-center gap-2">
+            <div
+              className="h-10 w-10 rounded-xl flex items-center justify-center
+                bg-amber-500/15 border border-amber-500/25"
+              style={{ boxShadow: "0 0 24px rgba(245,158,11,0.2)" }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-              />
-            </svg>
+              <span
+                className="text-amber-400 font-bold text-base"
+                style={{ fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                R
+              </span>
+            </div>
+            <div>
+              <p
+                className="text-lg font-semibold text-white tracking-tight"
+                style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                Research<span className="text-amber-500">AM</span>
+              </p>
+              <p
+                className="text-xs text-zinc-600 tracking-widest uppercase"
+                style={{ fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                Article Management
+              </p>
+            </div>
           </div>
-
-          {/* Title with text shadow */}
-          <span>
-            <h1
-              className="text-6xl font-bold mb-3"
-              style={{
-                color: "#ffffff",
-                textShadow:
-                  "0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2)",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Research Hub
-            </h1>
-          </span>
         </div>
 
-        {/* Form Container */}
+        {/* Page-specific auth form rendered here */}
         <Outlet />
       </div>
     </div>
   );
-};
-
-export default AuthLayout;
+}
