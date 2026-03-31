@@ -7,14 +7,28 @@ const {
   createArticle,
   updateArticle,
   deleteArticle,
-} = require("../controllers/articleController");
+} = require("../controllers/articleController.js");
+const { errorHandler } = require("../middlewares/errorHandler");
 const { validateArticleRequest } = require("../middlewares/validateRequest");
 
+// GET /api/articles
 router.get("/", getAllArticles);
+
+// GET /api/articles/search?q=...
 router.get("/search", searchArticles);
+
+// GET /api/articles/:id
 router.get("/:id", getArticleById);
+
+// POST /api/articles
 router.post("/", validateArticleRequest, createArticle);
-router.put("/:id", updateArticle);
+
+// PUT /api/articles/:id
+router.put("/:id", validateArticleRequest, updateArticle);
+
+// DELETE /api/articles/:id
 router.delete("/:id", deleteArticle);
+
+router.use(errorHandler);
 
 module.exports = router;
