@@ -1,0 +1,177 @@
+{
+  "results": [
+    {
+      "label": "GET all articles",
+      "avg": 0.559,
+      "median": 0.434,
+      "p95": 1.05,
+      "min": 0.239,
+      "max": 5.541,
+      "runs": 100
+    },
+    {
+      "label": "GET article by ID (PK lookup)",
+      "avg": 0.725,
+      "median": 0.555,
+      "p95": 1.877,
+      "min": 0.249,
+      "max": 4.092,
+      "runs": 100
+    },
+    {
+      "label": "GET articles by Status",
+      "avg": 0.503,
+      "median": 0.324,
+      "p95": 1.17,
+      "min": 0.207,
+      "max": 6.019,
+      "runs": 100
+    },
+    {
+      "label": "GET articles by PublicationType + Status (composite)",
+      "avg": 0.794,
+      "median": 0.602,
+      "p95": 1.914,
+      "min": 0.219,
+      "max": 6.316,
+      "runs": 100
+    },
+    {
+      "label": "FULLTEXT search title+abstract",
+      "avg": 1.043,
+      "median": 0.82,
+      "p95": 2.12,
+      "min": 0.376,
+      "max": 7.275,
+      "runs": 100
+    },
+    {
+      "label": "GET authors for article (join)",
+      "avg": 0.647,
+      "median": 0.35,
+      "p95": 2.36,
+      "min": 0.198,
+      "max": 6.11,
+      "runs": 100
+    },
+    {
+      "label": "GET reviews for article",
+      "avg": 0.623,
+      "median": 0.375,
+      "p95": 2.317,
+      "min": 0.231,
+      "max": 4.69,
+      "runs": 100
+    },
+    {
+      "label": "AGGREGATE articles by status",
+      "avg": 0.455,
+      "median": 0.275,
+      "p95": 1.606,
+      "min": 0.178,
+      "max": 3.877,
+      "runs": 100
+    },
+    {
+      "label": "Most cited articles (citation join + COUNT)",
+      "avg": 0.591,
+      "median": 0.446,
+      "p95": 1.347,
+      "min": 0.242,
+      "max": 5.635,
+      "runs": 100
+    },
+    {
+      "label": "UserAccount lookup by Username (login)",
+      "avg": 0.219,
+      "median": 0.181,
+      "p95": 0.412,
+      "min": 0.13,
+      "max": 0.584,
+      "runs": 100
+    }
+  ],
+  "explains": [
+    {
+      "label": "GET all articles",
+      "type": "ALL",
+      "key": "(none)",
+      "key_len": null,
+      "rows_est": 10,
+      "extra": "Using filesort"
+    },
+    {
+      "label": "GET article by ID (PK lookup)",
+      "type": "const",
+      "key": "PRIMARY",
+      "key_len": "4",
+      "rows_est": 1,
+      "extra": null
+    },
+    {
+      "label": "GET articles by Status",
+      "type": "ref",
+      "key": "idx_article_status_date",
+      "key_len": "1",
+      "rows_est": 2,
+      "extra": "Using index condition"
+    },
+    {
+      "label": "GET articles by PublicationType + Status (composite)",
+      "type": "ref",
+      "key": "idx_article_type_status_date",
+      "key_len": "2",
+      "rows_est": 1,
+      "extra": "Using index condition"
+    },
+    {
+      "label": "FULLTEXT search title+abstract",
+      "type": "fulltext",
+      "key": "idx_ft_article_combined",
+      "key_len": "0",
+      "rows_est": 1,
+      "extra": "Using where; Ft_hints: no_ranking; Using filesort"
+    },
+    {
+      "label": "GET authors for article (join)",
+      "type": "ref",
+      "key": "PRIMARY",
+      "key_len": "4",
+      "rows_est": 2,
+      "extra": "Using index"
+    },
+    {
+      "label": "GET reviews for article",
+      "type": "ref",
+      "key": "idx_review_article_date",
+      "key_len": "5",
+      "rows_est": 2,
+      "extra": "Using where"
+    },
+    {
+      "label": "AGGREGATE articles by status",
+      "type": "index",
+      "key": "idx_article_status_date",
+      "key_len": "5",
+      "rows_est": 10,
+      "extra": "Using index; Using temporary; Using filesort"
+    },
+    {
+      "label": "Most cited articles (citation join + COUNT)",
+      "type": "index",
+      "key": "PRIMARY",
+      "key_len": "4",
+      "rows_est": 10,
+      "extra": "Using temporary; Using filesort"
+    },
+    {
+      "label": "UserAccount lookup by Username (login)",
+      "type": null,
+      "key": "(none)",
+      "key_len": null,
+      "rows_est": null,
+      "extra": "no matching row in const table"
+    }
+  ],
+  "timestamp": "2026-04-01T04:23:32.346Z"
+}
