@@ -1,0 +1,148 @@
+{
+  "before_timestamp": "2026-04-01T04:23:32.346Z",
+  "after_timestamp": "2026-04-01T05:12:25.561Z",
+  "comparisons": [
+    {
+      "label": "GET all articles",
+      "before": 0.559,
+      "after": 0.471,
+      "diff": -0.088,
+      "pct": 15.7,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "GET article by ID (PK lookup)",
+      "before": 0.725,
+      "after": 0.392,
+      "diff": -0.333,
+      "pct": 45.9,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "GET articles by Status",
+      "before": 0.503,
+      "after": 0.449,
+      "diff": -0.054,
+      "pct": 10.7,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "GET articles by PublicationType + Status (composite)",
+      "before": 0.794,
+      "after": 0.476,
+      "diff": -0.318,
+      "pct": 40.1,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "FULLTEXT search title+abstract",
+      "before": 1.043,
+      "after": 0.736,
+      "diff": -0.307,
+      "pct": 29.4,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "GET authors for article (join)",
+      "before": 0.647,
+      "after": 0.339,
+      "diff": -0.308,
+      "pct": 47.6,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "GET reviews for article",
+      "before": 0.623,
+      "after": 0.44,
+      "diff": -0.183,
+      "pct": 29.4,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "AGGREGATE articles by status",
+      "before": 0.455,
+      "after": 0.359,
+      "diff": -0.096,
+      "pct": 21.1,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "Most cited articles (citation join + COUNT)",
+      "before": 0.591,
+      "after": 0.573,
+      "diff": -0.018,
+      "pct": 3,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "UserAccount lookup by Username (login)",
+      "before": 0.219,
+      "after": 0.308,
+      "diff": 0.089,
+      "pct": -40.6,
+      "arrow": "⚠️  slower"
+    }
+  ],
+  "index_changes": [
+    {
+      "label": "GET all articles",
+      "before_key": "(none)",
+      "after_key": "(none)",
+      "changed": false
+    },
+    {
+      "label": "GET article by ID (PK lookup)",
+      "before_key": "PRIMARY",
+      "after_key": "PRIMARY",
+      "changed": false
+    },
+    {
+      "label": "GET articles by Status",
+      "before_key": "idx_article_status_date",
+      "after_key": "idx_ra_status_date",
+      "changed": true
+    },
+    {
+      "label": "GET articles by PublicationType + Status (composite)",
+      "before_key": "idx_article_type_status_date",
+      "after_key": "idx_ra_type_status_date",
+      "changed": true
+    },
+    {
+      "label": "FULLTEXT search title+abstract",
+      "before_key": "idx_ft_article_combined",
+      "after_key": "idx_ft_article_combined",
+      "changed": false
+    },
+    {
+      "label": "GET authors for article (join)",
+      "before_key": "PRIMARY",
+      "after_key": "PRIMARY",
+      "changed": false
+    },
+    {
+      "label": "GET reviews for article",
+      "before_key": "idx_review_article_date",
+      "after_key": "idx_review_article_cover",
+      "changed": true
+    },
+    {
+      "label": "AGGREGATE articles by status",
+      "before_key": "idx_article_status_date",
+      "after_key": "idx_ra_status_date",
+      "changed": true
+    },
+    {
+      "label": "Most cited articles (citation join + COUNT)",
+      "before_key": "PRIMARY",
+      "after_key": "PRIMARY",
+      "changed": false
+    },
+    {
+      "label": "UserAccount lookup by Username (login)",
+      "before_key": "(none)",
+      "after_key": "(none)",
+      "changed": false
+    }
+  ]
+}
