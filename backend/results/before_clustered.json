@@ -1,0 +1,126 @@
+{
+  "results": [
+    {
+      "label": "GET reviews for article (join)",
+      "avg": 0.318,
+      "median": 0.279,
+      "p95": 0.614,
+      "min": 0.174,
+      "max": 0.923,
+      "runs": 100
+    },
+    {
+      "label": "Most cited articles (citation COUNT)",
+      "avg": 0.542,
+      "median": 0.446,
+      "p95": 0.895,
+      "min": 0.186,
+      "max": 5.524,
+      "runs": 100
+    },
+    {
+      "label": "GET authors for article (join)",
+      "avg": 0.364,
+      "median": 0.297,
+      "p95": 0.874,
+      "min": 0.134,
+      "max": 2.58,
+      "runs": 100
+    },
+    {
+      "label": "GET article with reviews + reviewers",
+      "avg": 0.38,
+      "median": 0.227,
+      "p95": 1.093,
+      "min": 0.151,
+      "max": 4.981,
+      "runs": 100
+    },
+    {
+      "label": "GET article with authors + citation count",
+      "avg": 0.762,
+      "median": 0.537,
+      "p95": 2.181,
+      "min": 0.202,
+      "max": 3.124,
+      "runs": 100
+    },
+    {
+      "label": "GET all reviews range scan",
+      "avg": 0.438,
+      "median": 0.31,
+      "p95": 1.524,
+      "min": 0.126,
+      "max": 2.319,
+      "runs": 100
+    },
+    {
+      "label": "GET citations range scan",
+      "avg": 0.232,
+      "median": 0.141,
+      "p95": 0.615,
+      "min": 0.119,
+      "max": 1.086,
+      "runs": 100
+    }
+  ],
+  "explains": [
+    {
+      "label": "GET reviews for article (join)",
+      "type": "ref",
+      "key": "idx_review_article_cover",
+      "key_len": "5",
+      "rows_est": 2,
+      "extra": "Using where; Using index"
+    },
+    {
+      "label": "Most cited articles (citation COUNT)",
+      "type": "index",
+      "key": "PRIMARY",
+      "key_len": "4",
+      "rows_est": 10,
+      "extra": "Using temporary; Using filesort"
+    },
+    {
+      "label": "GET authors for article (join)",
+      "type": "ref",
+      "key": "PRIMARY",
+      "key_len": "4",
+      "rows_est": 2,
+      "extra": "Using index"
+    },
+    {
+      "label": "GET article with reviews + reviewers",
+      "type": "const",
+      "key": "PRIMARY",
+      "key_len": "4",
+      "rows_est": 1,
+      "extra": null
+    },
+    {
+      "label": "GET article with authors + citation count",
+      "type": "const",
+      "key": "PRIMARY",
+      "key_len": "4",
+      "rows_est": 1,
+      "extra": null
+    },
+    {
+      "label": "GET all reviews range scan",
+      "type": "index",
+      "key": "idx_review_article_cover",
+      "key_len": "16",
+      "rows_est": 10,
+      "extra": "Using where; Using index"
+    },
+    {
+      "label": "GET citations range scan",
+      "type": "index",
+      "key": "idx_citation_cited_id",
+      "key_len": "8",
+      "rows_est": 10,
+      "extra": "Using where; Using index"
+    }
+  ],
+  "timestamp": "2026-04-01T05:38:53.595Z"
+}

@@ -1,0 +1,122 @@
+{
+  "baseline_label": "After covering indexes",
+  "clustered_label": "After clustered PK on joins",
+  "before_timestamp": "2026-04-01T05:38:53.595Z",
+  "after_timestamp": "2026-04-01T05:40:43.082Z",
+  "comparisons": [
+    {
+      "label": "GET reviews for article (join)",
+      "before": 0.318,
+      "after": 0.429,
+      "diff": 0.111,
+      "pct": -34.9,
+      "arrow": "⚠️  slower"
+    },
+    {
+      "label": "Most cited articles (citation COUNT)",
+      "before": 0.542,
+      "after": 0.369,
+      "diff": -0.173,
+      "pct": 31.9,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "GET authors for article (join)",
+      "before": 0.364,
+      "after": 0.348,
+      "diff": -0.016,
+      "pct": 4.4,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "GET article with reviews + reviewers",
+      "before": 0.38,
+      "after": 0.383,
+      "diff": 0.003,
+      "pct": -0.8,
+      "arrow": "⚠️  slower"
+    },
+    {
+      "label": "GET article with authors + citation count",
+      "before": 0.762,
+      "after": 0.497,
+      "diff": -0.265,
+      "pct": 34.8,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "GET all reviews range scan",
+      "before": 0.438,
+      "after": 0.292,
+      "diff": -0.146,
+      "pct": 33.3,
+      "arrow": "✅ faster"
+    },
+    {
+      "label": "GET citations range scan",
+      "before": 0.232,
+      "after": 0.296,
+      "diff": 0.064,
+      "pct": -27.6,
+      "arrow": "⚠️  slower"
+    }
+  ],
+  "index_changes": [
+    {
+      "label": "GET reviews for article (join)",
+      "before_key": "idx_review_article_cover",
+      "before_type": "ref",
+      "after_key": "idx_review_article_date",
+      "after_type": "ref",
+      "changed": true
+    },
+    {
+      "label": "Most cited articles (citation COUNT)",
+      "before_key": "PRIMARY",
+      "before_type": "index",
+      "after_key": "PRIMARY",
+      "after_type": "index",
+      "changed": false
+    },
+    {
+      "label": "GET authors for article (join)",
+      "before_key": "PRIMARY",
+      "before_type": "ref",
+      "after_key": "PRIMARY",
+      "after_type": "ref",
+      "changed": false
+    },
+    {
+      "label": "GET article with reviews + reviewers",
+      "before_key": "PRIMARY",
+      "before_type": "const",
+      "after_key": "PRIMARY",
+      "after_type": "const",
+      "changed": false
+    },
+    {
+      "label": "GET article with authors + citation count",
+      "before_key": "PRIMARY",
+      "before_type": "const",
+      "after_key": "PRIMARY",
+      "after_type": "const",
+      "changed": false
+    },
+    {
+      "label": "GET all reviews range scan",
+      "before_key": "idx_review_article_cover",
+      "before_type": "index",
+      "after_key": "idx_review_recommendation",
+      "after_type": "index",
+      "changed": true
+    },
+    {
+      "label": "GET citations range scan",
+      "before_key": "idx_citation_cited_id",
+      "before_type": "index",
+      "after_key": "PRIMARY",
+      "after_type": "index",
+      "changed": true
+    }
+  ]
+}

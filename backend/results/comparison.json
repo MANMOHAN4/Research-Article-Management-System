@@ -8,7 +8,7 @@
       "after": 0.471,
       "diff": -0.088,
       "pct": 15.7,
-      "arrow": "✅ faster"
+      "arrow": "faster"
     },
     {
       "label": "GET article by ID (PK lookup)",
@@ -16,7 +16,7 @@
       "after": 0.392,
       "diff": -0.333,
       "pct": 45.9,
-      "arrow": "✅ faster"
+      "arrow": "faster"
     },
     {
       "label": "GET articles by Status",
@@ -24,7 +24,7 @@
       "after": 0.449,
       "diff": -0.054,
       "pct": 10.7,
-      "arrow": "✅ faster"
+      "arrow": "faster"
     },
     {
       "label": "GET articles by PublicationType + Status (composite)",
@@ -32,7 +32,7 @@
       "after": 0.476,
       "diff": -0.318,
       "pct": 40.1,
-      "arrow": "✅ faster"
+      "arrow": "faster"
     },
     {
       "label": "FULLTEXT search title+abstract",
@@ -40,7 +40,7 @@
       "after": 0.736,
       "diff": -0.307,
       "pct": 29.4,
-      "arrow": "✅ faster"
+      "arrow": "faster"
     },
     {
       "label": "GET authors for article (join)",
@@ -48,7 +48,7 @@
       "after": 0.339,
       "diff": -0.308,
       "pct": 47.6,
-      "arrow": "✅ faster"
+      "arrow": "faster"
     },
     {
       "label": "GET reviews for article",
@@ -56,7 +56,7 @@
       "after": 0.44,
       "diff": -0.183,
       "pct": 29.4,
-      "arrow": "✅ faster"
+      "arrow": "faster"
     },
     {
       "label": "AGGREGATE articles by status",
@@ -64,7 +64,7 @@
       "after": 0.359,
       "diff": -0.096,
       "pct": 21.1,
-      "arrow": "✅ faster"
+      "arrow": "faster"
     },
     {
       "label": "Most cited articles (citation join + COUNT)",
@@ -72,7 +72,7 @@
       "after": 0.573,
       "diff": -0.018,
       "pct": 3,
-      "arrow": "✅ faster"
+      "arrow": "faster"
     },
     {
       "label": "UserAccount lookup by Username (login)",
@@ -80,7 +80,7 @@
       "after": 0.308,
       "diff": 0.089,
       "pct": -40.6,
-      "arrow": "⚠️  slower"
+      "arrow": "slower"
     }
   ],
   "index_changes": [
