@@ -8,6 +8,7 @@ const {
   deleteJournal,
 } = require("../controllers/journalController");
 const { errorHandler } = require("../middlewares/errorHandler");
+const { requireAdmin } = require("../middlewares/adminMiddleware");
 
 // GET /api/journals
 router.get("/", getAllJournals);
@@ -22,7 +23,7 @@ router.post("/", createJournal);
 router.put("/:id", updateJournal);
 
 // DELETE /api/journals/:id
-router.delete("/:id", deleteJournal);
+router.delete("/:id", requireAdmin, deleteJournal);
 
 router.use(errorHandler);
 

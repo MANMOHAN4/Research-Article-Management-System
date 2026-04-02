@@ -28,14 +28,13 @@ const getConferenceById = async (req, res) => {
   try {
     const [conference] = await pool.query(
       "SELECT * FROM Conference WHERE ConferenceID = ?",
-      [req.params.id],
+      [req.params.id]
     );
 
     if (conference.length === 0) {
       return res.status(404).json({ error: "Conference not found" });
     }
 
-    // Get articles in this conference with lossless join for authors
     const [articles] = await pool.query(
       `
       SELECT 
@@ -53,7 +52,7 @@ const getConferenceById = async (req, res) => {
       GROUP BY ra.ArticleID
       ORDER BY ra.SubmissionDate DESC
       `,
-      [req.params.id],
+      [req.params.id]
     );
 
     res.json({ ...conference[0], articles });
@@ -73,7 +72,6 @@ const createConference = async (req, res) => {
     return res.status(400).json({ error: "Name is required" });
   }
 
-  // Validate dates
   if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
     return res.status(400).json({
       error: "Start date must be before end date",
@@ -83,12 +81,12 @@ const createConference = async (req, res) => {
   try {
     const [result] = await pool.query(
       "INSERT INTO Conference (Name, Location, StartDate, EndDate) VALUES (?, ?, ?, ?)",
-      [name, location || null, startDate || null, endDate || null],
+      [name, location || null, startDate || null, endDate || null]
     );
 
     const [conference] = await pool.query(
       "SELECT * FROM Conference WHERE ConferenceID = ?",
-      [result.insertId],
+      [result.insertId]
     );
 
     res.status(201).json({
@@ -107,7 +105,6 @@ const createConference = async (req, res) => {
 const updateConference = async (req, res) => {
   const { name, location, startDate, endDate } = req.body;
 
-  // Validate dates
   if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
     return res.status(400).json({
       error: "Start date must be before end date",
@@ -117,13 +114,7 @@ const updateConference = async (req, res) => {
   try {
     const [result] = await pool.query(
       "UPDATE Conference SET Name = ?, Location = ?, StartDate = ?, EndDate = ? WHERE ConferenceID = ?",
-      [
-        name,
-        location || null,
-        startDate || null,
-        endDate || null,
-        req.params.id,
-      ],
+      [name, location || null, startDate || null, endDate || null, req.params.id]
     );
 
     if (result.affectedRows === 0) {
@@ -132,7 +123,7 @@ const updateConference = async (req, res) => {
 
     const [conference] = await pool.query(
       "SELECT * FROM Conference WHERE ConferenceID = ?",
-      [req.params.id],
+      [req.params.id]
     );
 
     res.json({
@@ -146,14 +137,14 @@ const updateConference = async (req, res) => {
 };
 
 /**
- * Delete conference
+ * Delete conference — Admin only (enforced by requireAdmin middleware in router)
  * SET NULL in ResearchArticle due to ON DELETE SET NULL
  */
 const deleteConference = async (req, res) => {
   try {
     const [result] = await pool.query(
       "DELETE FROM Conference WHERE ConferenceID = ?",
-      [req.params.id],
+      [req.params.id]
     );
 
     if (result.affectedRows === 0) {
@@ -162,7 +153,8 @@ const deleteConference = async (req, res) => {
 
     res.json({
       message:
-        "Conference deleted successfully. Articles that were in this conference now have ConferenceID set to NULL.",
+        "Conference deleted successfully. Articles in this conference now have ConferenceID set to NULL.",
+      deletedBy: req.adminUserId,
     });
   } catch (err) {
     console.error("Error deleting conference:", err);

@@ -10,6 +10,7 @@ const {
   getUserReviews,
 } = require("../controllers/userController");
 const { errorHandler } = require("../middlewares/errorHandler");
+const { requireAdmin } = require("../middlewares/adminMiddleware");
 
 // GET /api/users
 router.get("/", getAllUsers);
@@ -30,7 +31,7 @@ router.put("/:id", updateUser);
 router.put("/:id/password", updatePassword);
 
 // DELETE /api/users/:id
-router.delete("/:id", deleteUser);
+router.delete("/:id", requireAdmin, deleteUser);
 
 router.use(errorHandler);
 

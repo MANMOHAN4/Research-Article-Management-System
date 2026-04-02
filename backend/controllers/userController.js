@@ -15,7 +15,7 @@ const getAllUsers = async (req, res) => {
         Affiliation, 
         ORCID 
       FROM UserAccount
-      ORDER BY Username`,
+      ORDER BY Username`
     );
     res.json(rows);
   } catch (err) {
@@ -39,23 +39,21 @@ const getUserById = async (req, res) => {
         ORCID 
       FROM UserAccount 
       WHERE UserID = ?`,
-      [req.params.id],
+      [req.params.id]
     );
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Get related Author record if exists
     const [author] = await pool.query(
       "SELECT AuthorID FROM Author WHERE UserID = ?",
-      [req.params.id],
+      [req.params.id]
     );
 
-    // Get related Reviewer record if exists
     const [reviewer] = await pool.query(
       "SELECT ReviewerID, ExpertiseArea FROM Reviewer WHERE UserID = ?",
-      [req.params.id],
+      [req.params.id]
     );
 
     res.json({
@@ -72,17 +70,16 @@ const getUserById = async (req, res) => {
 
 /**
  * Update user profile
- * This updates the single source of truth - changes propagate via lossless joins
+ * This updates the single source of truth — changes propagate via lossless joins
  */
 const updateUser = async (req, res) => {
   const { email, affiliation, orcid } = req.body;
 
   try {
-    // Check if email is being changed and if it's already in use
     if (email) {
       const [existing] = await pool.query(
         "SELECT UserID FROM UserAccount WHERE Email = ? AND UserID != ?",
-        [email, req.params.id],
+        [email, req.params.id]
       );
 
       if (existing.length > 0) {
@@ -96,14 +93,13 @@ const updateUser = async (req, res) => {
            Affiliation = ?, 
            ORCID = ? 
        WHERE UserID = ?`,
-      [email, affiliation || null, orcid || null, req.params.id],
+      [email, affiliation || null, orcid || null, req.params.id]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Return updated user
     const [user] = await pool.query(
       `SELECT 
         UserID, 
@@ -114,7 +110,7 @@ const updateUser = async (req, res) => {
         ORCID 
       FROM UserAccount 
       WHERE UserID = ?`,
-      [req.params.id],
+      [req.params.id]
     );
 
     res.json({
@@ -130,8 +126,7 @@ const updateUser = async (req, res) => {
 
 /**
  * Update user password
- * WARNING: This stores passwords in plain text (not recommended for production)
- * In production, use bcrypt or another hashing library
+ * WARNING: Stores plain-text password (not recommended for production)
  */
 const updatePassword = async (req, res) => {
   const { password } = req.body;
@@ -143,22 +138,16 @@ const updatePassword = async (req, res) => {
   }
 
   try {
-    // NOTE: In production, hash the password before storing
-    // const bcrypt = require('bcrypt');
-    // const hashedPassword = await bcrypt.hash(password, 10);
-
     const [result] = await pool.query(
       "UPDATE UserAccount SET PasswordHash = ? WHERE UserID = ?",
-      [password, req.params.id], // In production: use hashedPassword
+      [password, req.params.id]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json({
-      message: "Password updated successfully",
-    });
+    res.json({ message: "Password updated successfully" });
   } catch (err) {
     console.error("Error updating password:", err);
     res.status(500).json({
@@ -169,14 +158,21 @@ const updatePassword = async (req, res) => {
 };
 
 /**
- * Delete user
- * CASCADE will handle Author/Reviewer deletions
+ * Delete user — Admin only (enforced by requireAdmin middleware in router)
+ * CASCADE will handle Author/Reviewer/ArticleAuthor deletions
  */
 const deleteUser = async (req, res) => {
+  // Prevent admin from deleting themselves
+  if (String(req.params.id) === String(req.adminUserId)) {
+    return res.status(400).json({
+      error: "Admins cannot delete their own account",
+    });
+  }
+
   try {
     const [result] = await pool.query(
       "DELETE FROM UserAccount WHERE UserID = ?",
-      [req.params.id],
+      [req.params.id]
     );
 
     if (result.affectedRows === 0) {
@@ -186,6 +182,7 @@ const deleteUser = async (req, res) => {
     res.json({
       message:
         "User deleted successfully. Related Author/Reviewer records also removed (CASCADE).",
+      deletedBy: req.adminUserId,
     });
   } catch (err) {
     console.error("Error deleting user:", err);
@@ -212,7 +209,7 @@ const getUserArticles = async (req, res) => {
       WHERE a.UserID = ?
       ORDER BY ra.SubmissionDate DESC
       `,
-      [req.params.id],
+      [req.params.id]
     );
 
     res.json(articles);
@@ -240,7 +237,7 @@ const getUserReviews = async (req, res) => {
       WHERE rev.UserID = ?
       ORDER BY r.ReviewDate DESC
       `,
-      [req.params.id],
+      [req.params.id]
     );
 
     res.json(reviews);

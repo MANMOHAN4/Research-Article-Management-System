@@ -8,6 +8,7 @@ const {
   deleteConference,
 } = require("../controllers/conferenceController");
 const { errorHandler } = require("../middlewares/errorHandler");
+const { requireAdmin } = require("../middlewares/adminMiddleware");
 
 // GET /api/conferences
 router.get("/", getAllConferences);
@@ -22,7 +23,7 @@ router.post("/", createConference);
 router.put("/:id", updateConference);
 
 // DELETE /api/conferences/:id
-router.delete("/:id", deleteConference);
+router.delete("/:id", requireAdmin, deleteConference);
 
 router.use(errorHandler);
 

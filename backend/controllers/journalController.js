@@ -28,14 +28,13 @@ const getJournalById = async (req, res) => {
   try {
     const [journal] = await pool.query(
       "SELECT * FROM Journal WHERE JournalID = ?",
-      [req.params.id],
+      [req.params.id]
     );
 
     if (journal.length === 0) {
       return res.status(404).json({ error: "Journal not found" });
     }
 
-    // Get articles in this journal with lossless join for authors
     const [articles] = await pool.query(
       `
       SELECT 
@@ -53,7 +52,7 @@ const getJournalById = async (req, res) => {
       GROUP BY ra.ArticleID
       ORDER BY ra.SubmissionDate DESC
       `,
-      [req.params.id],
+      [req.params.id]
     );
 
     res.json({ ...journal[0], articles });
@@ -76,12 +75,12 @@ const createJournal = async (req, res) => {
   try {
     const [result] = await pool.query(
       "INSERT INTO Journal (Name, Publisher, ISSN, ImpactFactor) VALUES (?, ?, ?, ?)",
-      [name, publisher || null, issn || null, impactFactor || null],
+      [name, publisher || null, issn || null, impactFactor || null]
     );
 
     const [journal] = await pool.query(
       "SELECT * FROM Journal WHERE JournalID = ?",
-      [result.insertId],
+      [result.insertId]
     );
 
     res.status(201).json({
@@ -103,13 +102,7 @@ const updateJournal = async (req, res) => {
   try {
     const [result] = await pool.query(
       "UPDATE Journal SET Name = ?, Publisher = ?, ISSN = ?, ImpactFactor = ? WHERE JournalID = ?",
-      [
-        name,
-        publisher || null,
-        issn || null,
-        impactFactor || null,
-        req.params.id,
-      ],
+      [name, publisher || null, issn || null, impactFactor || null, req.params.id]
     );
 
     if (result.affectedRows === 0) {
@@ -118,7 +111,7 @@ const updateJournal = async (req, res) => {
 
     const [journal] = await pool.query(
       "SELECT * FROM Journal WHERE JournalID = ?",
-      [req.params.id],
+      [req.params.id]
     );
 
     res.json({
@@ -132,14 +125,14 @@ const updateJournal = async (req, res) => {
 };
 
 /**
- * Delete journal
+ * Delete journal — Admin only (enforced by requireAdmin middleware in router)
  * SET NULL in ResearchArticle due to ON DELETE SET NULL
  */
 const deleteJournal = async (req, res) => {
   try {
     const [result] = await pool.query(
       "DELETE FROM Journal WHERE JournalID = ?",
-      [req.params.id],
+      [req.params.id]
     );
 
     if (result.affectedRows === 0) {
@@ -148,7 +141,8 @@ const deleteJournal = async (req, res) => {
 
     res.json({
       message:
-        "Journal deleted successfully. Articles that were in this journal now have JournalID set to NULL.",
+        "Journal deleted successfully. Articles in this journal now have JournalID set to NULL.",
+      deletedBy: req.adminUserId,
     });
   } catch (err) {
     console.error("Error deleting journal:", err);
